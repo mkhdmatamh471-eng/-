@@ -591,7 +591,20 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 2. معالجة الروابط العميقة (Deep Linking)
     if context.args:
         arg_value = context.args[0]
-
+ البوت الخاصة (بدون فحص) ---
+        if arg_value.startswith("direct_"):
+            customer_id = arg_value.replace("direct_", "")
+            
+            contact_kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("👤 اضغط هنا لبدء المحادثة", url=f"tg://user?id={customer_id}")]
+            ])
+            
+            await update.message.reply_text(
+                "✅ <b>تفضل رابط التواصل المباشر مع العميل:</b>",
+                reply_markup=contact_kb,
+                parse_mode=ParseMode.HTML
+            )
+            return
         # معالجة كل من chat_ و verify_ لضمان التوافق
         if arg_value.startswith("chat_") or arg_value.startswith("verify_"):
             # استخراج آيدي العميل (customer_id)
