@@ -577,57 +577,65 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     first_name = update.effective_user.first_name or "عزيزي"
     
-    # 1. تنظيف بيانات الجلسة المؤقتة وضمان جلب المستخدم
+    # 1. ضمان جلب بيانات المستخدم وتحديث الكاش
     context.user_data.clear()
     user = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))
 
     if not user:
+        # محاولة الجلب من قاعدة البيانات إذا لم يكن في الكاش
         await get_user_role(user_id)
         user = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))
 
     is_registered = True if user else False
 
-    # 2. معالجة الروابط العميقة (Deep Linking) أولاً
+    # 2. معالجة الروابط العميقة (Deep Linking)
     if context.args:
         arg_value = context.args[0]
 
-        # --- حالة التحقق من الاشتراك (verify_) ---
-        if arg_value.startswith("verify_"):
-            customer_id = arg_value.replace("verify_", "")
+        # معالجة كل من chat_ و verify_ لضمان التوافق
+        if arg_value.startswith("chat_") or arg_value.startswith("verify_"):
+            # استخراج آيدي العميل (customer_id)
+            customer_id = arg_value.replace("chat_", "").replace("verify_", "")
             
-            # التحقق من حالة الاشتراك من الكاش
+            # التحقق من حالة الاشتراك (is_verified) من قاعدة البيانات
             is_sub = user.get('is_verified', False) if is_registered else False
             
             if is_sub:
+                # رابط تليجرام المباشر لفتح محادثة مع العميل
+                direct_url = f"tg://user?id={customer_id}"
+                
                 contact_kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("👤 اضغط هنا لمراسلة العميل", url=f"tg://user?id={customer_id}")]
+                    [InlineKeyboardButton("👤 مراسلة العميل الآن", url=direct_url)]
                 ])
+                
                 await update.message.reply_text(
-                    "✅ <b>تم التحقق من اشتراكك بنجاح.</b>\n\n"
-                    "يمكنك الآن التواصل مع العميل مباشرة عبر الزر أدناه:",
+                    "✅ <b>تم التحقق من هويتك ككابتن مشترك.</b>\n\n"
+                    "اضغط على الزر أدناه لبدء المحادثة مع العميل مباشرة:",
                     reply_markup=contact_kb,
                     parse_mode=ParseMode.HTML
                 )
             else:
+                # رسالة الرفض لغير المشتركين
                 await update.message.reply_text(
-                    "⚠️ <b>عذراً، أنت غير مشترك!</b>\n\n"
-                    "رؤية روابط العملاء متاحة فقط للمشتركين الفعالين.\n"
-                    "يرجى التواصل مع الإدارة للاشتراك: @x3FreTx",
+                    "⚠️ <b>عذراً، الوصول محظور!</b>\n\n"
+                    "رؤية روابط العملاء متاحة فقط للكباتن المشتركين والفعالين.\n"
+                    "للاشتراك وتفعيل حسابك، تواصل مع الإدارة: @x3FreTx",
                     parse_mode=ParseMode.HTML
                 )
-            return # إنهاء الدالة بعد معالجة الرابط لعدم إرسال رسالة الترحيب
+            return # إنهاء الدالة هنا
 
-    # 3. معالجة المستخدم المسجل (بدون روابط أو بروابط غير verify_)
+    # 3. معالجة الدخول العادي للمستخدمين المسجلين
     if is_registered:
         role = user.get('role', 'rider')
         is_verified = user.get('is_verified', False)
         name_in_db = user.get('name') or first_name
         
         await update.message.reply_text(
-            f"👋 مرحباً بك مجدداً يا {name_in_db}", 
+            f"👋 مرحباً بك مجدداً يا {name_in_db}\nلقد تم تسجيل دخولك بنجاح.", 
             reply_markup=get_main_kb(role, is_verified)
         )
         return
+
 
 
         # --- حالة طلب رحلة (order_) ---
