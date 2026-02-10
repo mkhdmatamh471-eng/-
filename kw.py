@@ -591,7 +591,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 2. معالجة الروابط العميقة (Deep Linking)
     if context.args:
         arg_value = context.args[0]
- البوت الخاصة (بدون فحص) ---
+
         if arg_value.startswith("direct_"):
             customer_id = arg_value.replace("direct_", "")
             
