@@ -247,14 +247,14 @@ def end_chat_session(user_id):
 
 async def get_user_role(user_id):
     uid_str = str(user_id)
+    uid_int = int(user_id)
     conn = get_db_connection()
     if not conn: return 'rider'
 
     try:
         def query():
             with conn.cursor() as cur:
-                # نجلب كل شيء لضمان عدم نقص أي عمود
-                cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+                cur.execute("SELECT * FROM users WHERE user_id = %s", (uid_int,))
                 columns = [desc[0] for desc in cur.description]
                 row = cur.fetchone()
                 return dict(zip(columns, row)) if row else None
@@ -262,8 +262,9 @@ async def get_user_role(user_id):
         user_data = await asyncio.to_thread(query)
         
         if user_data:
-            # تخزين القاموس كاملاً في الكاش
+            # ✅ التعديل: تخزين البيانات تحت المفتاح النصي والرقمي لضمان الوصول السريع
             USER_CACHE[uid_str] = user_data
+            USER_CACHE[uid_int] = user_data
             return user_data.get('role', 'rider')
         return 'rider'
     except Exception as e:
@@ -271,7 +272,6 @@ async def get_user_role(user_id):
         return 'rider'
     finally:
         release_db_connection(conn)
-
 
 def normalize_text(text):
     if not text: return ""
@@ -577,47 +577,28 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     first_name = update.effective_user.first_name or "عزيزي"
     
-    # 1. تنظيف الذاكرة
+    # 1. تنظيف بيانات الجلسة المؤقتة وضمان جلب المستخدم
     context.user_data.clear()
-
-    # ✅ التحقق من وجود المستخدم في الكاش أو جلبه من القاعدة (داخل مستوى الدالة)
-    if not (USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))):
-        await get_user_role(user_id) 
-
-    # 2. جلب بيانات المستخدم من الكاش بعد التحديث
     user = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))
-    
-    # تحديد حالة التسجيل بناءً على وجود البيانات فعلياً
+
+    if not user:
+        await get_user_role(user_id)
+        user = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))
+
     is_registered = True if user else False
 
-    # 3. معالجة الدخول العادي (مستخدم مسجل سابقاً)
-    if not context.args and is_registered:
-        # تأكد من استخدام مفتاح 'name' بأمان
-        name_in_db = user.get('name') or first_name
-        await update.message.reply_text(
-            f"👋 مرحباً بك مجدداً يا {name_in_db}", 
-            reply_markup=get_main_kb(user.get('role', 'rider'), user.get('is_verified', False))
-        )
-        return
-
-    # 4. معالجة الروابط العميقة (Deep Linking)    
-    # 4. معالجة الروابط العميقة (Deep Linking)
+    # 2. معالجة الروابط العميقة (Deep Linking) أولاً
     if context.args:
         arg_value = context.args[0]
 
-        # --- حالة التحقق من الاشتراك لمراسلة العميل ---
+        # --- حالة التحقق من الاشتراك (verify_) ---
         if arg_value.startswith("verify_"):
             customer_id = arg_value.replace("verify_", "")
-            user_id = update.effective_user.id
             
-            # جلب بيانات السائق من الكاش أو قاعدة البيانات
-            user_data = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))
-            
-            # التحقق من حالة الاشتراك (True/False)
-            is_sub = user_data.get('is_verified') if user_data else False
+            # التحقق من حالة الاشتراك من الكاش
+            is_sub = user.get('is_verified', False) if is_registered else False
             
             if is_sub:
-                # إذا كان مشترك -> نرسل له رابط التواصل المباشر
                 contact_kb = InlineKeyboardMarkup([
                     [InlineKeyboardButton("👤 اضغط هنا لمراسلة العميل", url=f"tg://user?id={customer_id}")]
                 ])
@@ -628,16 +609,26 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode=ParseMode.HTML
                 )
             else:
-                # إذا كان غير مشترك أو بياناته غير موجودة
                 await update.message.reply_text(
                     "⚠️ <b>عذراً، أنت غير مشترك!</b>\n\n"
                     "رؤية روابط العملاء متاحة فقط للمشتركين الفعالين.\n"
                     "يرجى التواصل مع الإدارة للاشتراك: @x3FreTx",
                     parse_mode=ParseMode.HTML
                 )
-            return  # إنهاء الدالة هنا بعد معالجة الرابط العميق
+            return # إنهاء الدالة بعد معالجة الرابط لعدم إرسال رسالة الترحيب
 
-        # --- (اختياري) حالات args أخرى مثل order_ أو driver_reg تضعها هنا ---
+    # 3. معالجة المستخدم المسجل (بدون روابط أو بروابط غير verify_)
+    if is_registered:
+        role = user.get('role', 'rider')
+        is_verified = user.get('is_verified', False)
+        name_in_db = user.get('name') or first_name
+        
+        await update.message.reply_text(
+            f"👋 مرحباً بك مجدداً يا {name_in_db}", 
+            reply_markup=get_main_kb(role, is_verified)
+        )
+        return
+
 
         # --- حالة طلب رحلة (order_) ---
         if arg_value.startswith("order_"):
