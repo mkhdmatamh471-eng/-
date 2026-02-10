@@ -600,77 +600,44 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # 4. معالجة الروابط العميقة (Deep Linking)    
     # 4. معالجة الروابط العميقة (Deep Linking)
     if context.args:
         arg_value = context.args[0]
 
-        # --- حالة مراسلة عميل (contact_) تضاف هنا ---
-                # --- [أ] روابط فحص الاشتراك (المصدر والعميل) ---
-        if arg_value.startswith("contact_") or arg_value.startswith("source_"):
-            status_msg = await update.message.reply_text("⏳ جاري التحقق من صلاحية الوصول...")
-            try:
-                # 1. تحديث البيانات لضمان دقة حالة الاشتراك
-                await get_user_role(user_id)
-                user = USER_CACHE.get(str(user_id)) or {}
-                
-                role = str(user.get('role', '')).lower()
-                expiry = user.get('subscription_expiry')
-                
-                is_active = False
-                ksa_tz = pytz.timezone('Asia/Riyadh')
-                now_ksa = datetime.now(ksa_tz)
+        # --- حالة التحقق من الاشتراك لمراسلة العميل ---
+        if arg_value.startswith("verify_"):
+            customer_id = arg_value.replace("verify_", "")
+            user_id = update.effective_user.id
+            
+            # جلب بيانات السائق من الكاش أو قاعدة البيانات
+            user_data = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))
+            
+            # التحقق من حالة الاشتراك (True/False)
+            is_sub = user_data.get('is_verified') if user_data else False
+            
+            if is_sub:
+                # إذا كان مشترك -> نرسل له رابط التواصل المباشر
+                contact_kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("👤 اضغط هنا لمراسلة العميل", url=f"tg://user?id={customer_id}")]
+                ])
+                await update.message.reply_text(
+                    "✅ <b>تم التحقق من اشتراكك بنجاح.</b>\n\n"
+                    "يمكنك الآن التواصل مع العميل مباشرة عبر الزر أدناه:",
+                    reply_markup=contact_kb,
+                    parse_mode=ParseMode.HTML
+                )
+            else:
+                # إذا كان غير مشترك أو بياناته غير موجودة
+                await update.message.reply_text(
+                    "⚠️ <b>عذراً، أنت غير مشترك!</b>\n\n"
+                    "رؤية روابط العملاء متاحة فقط للمشتركين الفعالين.\n"
+                    "يرجى التواصل مع الإدارة للاشتراك: @x3FreTx",
+                    parse_mode=ParseMode.HTML
+                )
+            return  # إنهاء الدالة هنا بعد معالجة الرابط العميق
 
-                # 2. التحقق: يجب أن يكون سائقاً واشتراكه سارياً
-                if role == 'driver' and expiry:
-                    if isinstance(expiry, str):
-                        expiry_dt = datetime.fromisoformat(expiry.replace('Z', '+00:00'))
-                    else:
-                        expiry_dt = expiry
-
-                    if expiry_dt.tzinfo is None:
-                        expiry_dt = ksa_tz.localize(expiry_dt)
-                    else:
-                        expiry_dt = expiry_dt.astimezone(ksa_tz)
-                    
-                    if expiry_dt > now_ksa:
-                        is_active = True
-
-                # 3. اتخاذ القرار بناءً على حالة الاشتراك
-                if is_active:
-                    parts = arg_value.split("_")
-                    
-                    # إذا كان الرابط للمصدر (قناة المصدر)
-                    if arg_value.startswith("source_") and len(parts) >= 3:
-                        clean_chat = str(parts[1]).replace("-100", "")
-                        source_url = f"https://t.me/c/{clean_chat}/{parts[2]}"
-                        await status_msg.edit_text(
-                            "✅ **تم التحقق من اشتراكك بنجاح**\n\nيمكنك الآن الانتقال لمصدر الطلب عبر الزر أدناه:",
-                            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔗 الانتقال للمصدر", url=source_url)]]),
-                            parse_mode="Markdown"
-                        )
-                    
-                    # إذا كان الرابط لمراسلة العميل مباشرة
-                    elif arg_value.startswith("contact_") and len(parts) >= 2:
-                        target_user = parts[1]
-                        # هنا نستخدم رابط tg://user لفتح محادثة مباشرة
-                        await status_msg.edit_text(
-                            "✅ **اشتراكك فعال**\n\nيمكنك الآن مراسلة العميل مباشرة عبر الرابط أدناه:",
-                            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 مراسلة العميل", url=f"tg://user?id={target_user}")]])
-                        )
-                else:
-                    # هذه الرسالة تظهر لغير المشتركين (يُمنع من رؤية الرابط)
-                    await status_msg.edit_text(
-                        "❌ **عذراً، هذه الميزة مخصصة للمشتركين فقط**\n\nيجب أن يكون لديك اشتراك كابتن فعال للوصول لبيانات العملاء.",
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("💳 تواصل لتفعيل الاشتراك", url="https://t.me/x3FreTx")]
-                        ]),
-                        parse_mode="Markdown"
-                    )
-
-            except Exception as e:
-                print(f"❌ Error in check: {e}")
-                await status_msg.edit_text("⚠️ حدث خطأ أثناء التحقق، حاول مجدداً لاحقاً.")
-            return
+        # --- (اختياري) حالات args أخرى مثل order_ أو driver_reg تضعها هنا ---
 
         # --- حالة طلب رحلة (order_) ---
         if arg_value.startswith("order_"):
