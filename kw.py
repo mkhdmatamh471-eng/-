@@ -605,25 +605,71 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         arg_value = context.args[0]
 
         # --- حالة مراسلة عميل (contact_) تضاف هنا ---
-        if arg_value.startswith("contact_"):
-            customer_id = arg_value.replace("contact_", "")
-            
-            # التحقق: هل الشخص الذي ضغط الزر (السائق) مسجل لدينا ككابتن؟
-            if is_registered and user.get('role') == 'driver':
-                # إنشاء زر يفتح بروفايل الراكب مباشرة
-                profile_button = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("👤 فتح بروفايل العميل الآن", url=f"tg://user?id={customer_id}")]
-                ])
+                # --- [أ] روابط فحص الاشتراك (المصدر والعميل) ---
+        if arg_value.startswith("contact_") or arg_value.startswith("source_"):
+            status_msg = await update.message.reply_text("⏳ جاري التحقق من صلاحية الوصول...")
+            try:
+                # 1. تحديث البيانات لضمان دقة حالة الاشتراك
+                await get_user_role(user_id)
+                user = USER_CACHE.get(str(user_id)) or {}
                 
-                await update.message.reply_text(
-                    "✅ **جاهز للتوصيل؟**\n"
-                    "اضغط على الزر أدناه لفتح محادثة مع العميل مباشرة، أو اضغط على (بدء المحادثة) في شاشة التليجرام.",
-                    reply_markup=profile_button,
-                    parse_mode=ParseMode.MARKDOWN
-                )
-            else:
-                # إذا كان الشخص غير مسجل أو ليس سائقاً
-                await update.message.reply_text("⚠️ عذراً، هذه الميزة مخصصة للكباتن المسجلين فقط.")
+                role = str(user.get('role', '')).lower()
+                expiry = user.get('subscription_expiry')
+                
+                is_active = False
+                ksa_tz = pytz.timezone('Asia/Riyadh')
+                now_ksa = datetime.now(ksa_tz)
+
+                # 2. التحقق: يجب أن يكون سائقاً واشتراكه سارياً
+                if role == 'driver' and expiry:
+                    if isinstance(expiry, str):
+                        expiry_dt = datetime.fromisoformat(expiry.replace('Z', '+00:00'))
+                    else:
+                        expiry_dt = expiry
+
+                    if expiry_dt.tzinfo is None:
+                        expiry_dt = ksa_tz.localize(expiry_dt)
+                    else:
+                        expiry_dt = expiry_dt.astimezone(ksa_tz)
+                    
+                    if expiry_dt > now_ksa:
+                        is_active = True
+
+                # 3. اتخاذ القرار بناءً على حالة الاشتراك
+                if is_active:
+                    parts = arg_value.split("_")
+                    
+                    # إذا كان الرابط للمصدر (قناة المصدر)
+                    if arg_value.startswith("source_") and len(parts) >= 3:
+                        clean_chat = str(parts[1]).replace("-100", "")
+                        source_url = f"https://t.me/c/{clean_chat}/{parts[2]}"
+                        await status_msg.edit_text(
+                            "✅ **تم التحقق من اشتراكك بنجاح**\n\nيمكنك الآن الانتقال لمصدر الطلب عبر الزر أدناه:",
+                            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔗 الانتقال للمصدر", url=source_url)]]),
+                            parse_mode="Markdown"
+                        )
+                    
+                    # إذا كان الرابط لمراسلة العميل مباشرة
+                    elif arg_value.startswith("contact_") and len(parts) >= 2:
+                        target_user = parts[1]
+                        # هنا نستخدم رابط tg://user لفتح محادثة مباشرة
+                        await status_msg.edit_text(
+                            "✅ **اشتراكك فعال**\n\nيمكنك الآن مراسلة العميل مباشرة عبر الرابط أدناه:",
+                            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 مراسلة العميل", url=f"tg://user?id={target_user}")]])
+                        )
+                else:
+                    # هذه الرسالة تظهر لغير المشتركين (يُمنع من رؤية الرابط)
+                    await status_msg.edit_text(
+                        "❌ **عذراً، هذه الميزة مخصصة للمشتركين فقط**\n\nيجب أن يكون لديك اشتراك كابتن فعال للوصول لبيانات العملاء.",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("💳 تواصل لتفعيل الاشتراك", url="https://t.me/x3FreTx")]
+                        ]),
+                        parse_mode="Markdown"
+                    )
+
+            except Exception as e:
+                print(f"❌ Error in check: {e}")
+                await status_msg.edit_text("⚠️ حدث خطأ أثناء التحقق، حاول مجدداً لاحقاً.")
             return
 
         # --- حالة طلب رحلة (order_) ---
