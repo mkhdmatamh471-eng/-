@@ -63,6 +63,8 @@ def run_flask():
 
 BOT_TOKEN = "8498451295:AAGt1R7THllSjYtEe5hvIEPnPhRkS_iBcnU"
 ADMIN_IDS = [8563113166, 7580027135, 5027690233]
+# ضع هنا الآيدي الخاص بحسابك (الذي يعمل عليه اليوزر بوت)
+RADAR_ACCOUNT_ID = 8563113166  # استبدله بالآيدي الصحيح
 
 # الكلمات المفتاحية للبحث في المجموعات
 
@@ -4120,7 +4122,128 @@ async def admin_show_user_details(update, context, target_id):
     ]
 
     await query.edit_message_text(res_txt, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+    
+    
+async def broadcast_order_to_drivers(district, content, cust_id, cust_name):
+    print(f"📢 البوت يبدأ معالجة البث لحي: {district}")
 
+    contact_url = f"tg://user?id={cust_id}"
+    base_text = (
+        f"🎯 <b>طلب مشوار جديد</b>\n"
+        f"📍 الحي: {district}\n"
+        f"👤 العميل: {cust_name}\n"
+        f"📝 التفاصيل: {content}\n"
+    )
+
+    conn = get_db_connection()
+    if not conn:
+        print("❌ فشل الاتصال بالقاعدة")
+        return
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT user_id, subscription_expiry 
+                FROM users 
+                WHERE is_blocked = FALSE AND TRIM(LOWER(role)) = 'driver'
+            """)
+            drivers = cur.fetchall()
+            
+            print(f"👥 جاري الإرسال لـ {len(drivers)} سائق...")
+
+            # 💡 التعديل هنا: نستخدم BOT_TOKEN لإرسال الرسائل مباشرة عبر API
+            # لضمان عدم تعارض المحركات
+            from telegram import Bot
+            bot = Bot(token=BOT_TOKEN) 
+
+            for user_id, expiry in drivers:
+                is_active = False
+                if expiry:
+                    now = datetime.now(timezone.utc)
+                    is_active = (expiry > now)
+
+                if is_active:
+                    kb = InlineKeyboardMarkup([[InlineKeyboardButton("💬 مراسلة العميل", url=contact_url)]])
+                    footer = "\n✅ اشتراكك فعال"
+                else:
+                    kb = InlineKeyboardMarkup([[InlineKeyboardButton("💳 اشترك لتفعيل المراسلة", url="https://t.me/x3FreTx")]])
+                    footer = "\n⚠️ التواصل للمشتركين فقط"
+
+                try:
+                    # نستخدم await bot.send_message
+                    await bot.send_message(
+                        chat_id=int(user_id),
+                        text=base_text + footer,
+                        reply_markup=kb,
+                        parse_mode=ParseMode.HTML
+                    )
+                except Exception as e:
+                    pass # تخطي الحظر أو الأخطاء الفردية
+                
+                await asyncio.sleep(0.05) # حماية من الـ Flood
+
+    except Exception as e:
+        print(f"❌ خطأ عام في دالة البث: {e}")
+    finally:
+        release_db_connection(conn)
+        print("🏁 انتهت عملية البث للسائقين.")
+
+
+async def notify_channel(district, content, cust_id):
+    if not content: return
+    try:
+        from telegram import Bot
+        bot = Bot(token=BOT_TOKEN)
+
+        bot_username = "Mishwariibot" 
+        gate_contact = f"https://t.me/{bot_username}?start=contact_{cust_id}"
+
+        buttons = [
+            [InlineKeyboardButton("💬 مراسلة العميل (للمشتركين)", url=gate_contact)],
+            [InlineKeyboardButton("💳 للاشتراك وتفعيل الحساب", url="https://t.me/x3FreTx")]
+        ]
+        keyboard = InlineKeyboardMarkup(buttons)
+
+        alert_text = (
+            f"🎯 <b>طلب مشوار جديد</b>\n\n"
+            f"📍 <b>المنطقة:</b> {district}\n"
+            f"📝 <b>التفاصيل:</b>\n<i>{content}</i>\n\n"
+            f"⏰ <b>الوقت:</b> {datetime.now().strftime('%H:%M:%S')}\n"
+            f"⚠️ <i>الروابط أعلاه تفتح للمشتركين فقط.</i>"
+        )
+
+        await bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=alert_text,
+            reply_markup=keyboard,
+            parse_mode=ParseMode.HTML
+        )
+        print(f"✅ تم الإرسال للقناة بنجاح: {district}")
+    except Exception as e:
+        print(f"❌ خطأ إرسال للقناة: {e}")
+
+
+
+async def handle_radar_signal(update, context):
+    try:
+        text = update.message.text
+        # تفكيك البيانات بناءً على التنسيق الذي يرسله اليوزر بوت
+        lines = text.split("\n")
+        
+        # استخراج القيم
+        district = lines[1].split(":")[1].strip()
+        cust_id = lines[2].split(":")[1].strip()
+        cust_name = lines[3].split(":")[1].strip()
+        content = lines[4].split(":", 1)[1].strip()
+
+        print(f"📡 إشارة من الرادار: طلب في حي {district}")
+
+        # تشغيل التوزيع للسائقين والقناة في الخلفية لعدم تعطيل البوت
+        asyncio.create_task(broadcast_order_to_drivers(district, content, cust_id, cust_name))
+        asyncio.create_task(notify_channel(district, content, cust_id))
+
+    except Exception as e:
+        print(f"❌ خطأ في معالجة إشارة الرادار: {e}")
 
 # ==================== 🌐 5. خادم Flask (للبقاء نشطاً) ====================
 
@@ -4147,6 +4270,9 @@ def main():
     application.add_handler(MessageHandler(filters.Regex("^لوحة التحكم$") & filters.User(ADMIN_IDS), admin_panel_view), group=0)
     application.add_handler(CommandHandler("send_drivers", broadcast_to_drivers), group=0)
     application.add_handler(CommandHandler("send_riders", broadcast_to_riders), group=0)
+    # أضف هذا السطر داخل دالة main
+    application.add_handler(MessageHandler(filters.User(user_id=RADAR_ACCOUNT_ID) & filters.Regex("#ORDER_DATA#"), handle_radar_signal), group=0)
+
     
 # أضف هذا السطر في دالة main
     application.add_handler(CommandHandler("picsend", admin_pic_send))
