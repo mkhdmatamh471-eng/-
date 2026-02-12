@@ -4125,75 +4125,79 @@ async def admin_show_user_details(update, context, target_id):
     
     
 async def broadcast_order_to_drivers(district, content, cust_id, cust_name):
-    print(f"📢 إرسال عام: البوت يبدأ البث لجميع السائقين (الحي: {district})")
-
-    contact_url = f"tg://user?id={cust_id}"
-    base_text = (
-        f"🎯 <b>طلب مشوار جديد</b>\n"
-        f"📍 الحي: {district}\n"
-        f"👤 العميل: {cust_name}\n"
-        f"📝 التفاصيل: {content}\n"
-    )
+    print(f"📡 [بدء البث] جاري استهداف السائقين للطلب في: {district}")
 
     conn = get_db_connection()
-    if not conn:
-        print("❌ فشل الاتصال بالقاعدة")
-        return
+    if not conn: return
 
     try:
         with conn.cursor() as cur:
-            # تم تعديل الاستعلام لجلب كل من دوره 'سائق' أو 'driver' بدون استثناء
+            # بناءً على الصورة: role هو 'driver' و is_blocked هو FALSE
             cur.execute("""
                 SELECT user_id, subscription_expiry 
                 FROM users 
                 WHERE is_blocked = FALSE 
-                AND (LOWER(role) = 'driver' OR role = 'سائق')
+                AND LOWER(role) = 'driver'
             """)
             drivers = cur.fetchall()
             
-            print(f"👥 جاري الإرسال لـ {len(drivers)} سائق (بث شامل)...")
+            if not drivers:
+                print("⚠️ لم يتم العثور على مستخدمين بدور 'driver' في قاعدة البيانات!")
+                return
+
+            print(f"✅ تم العثور على {len(drivers)} سائق. جاري الإرسال الآن...")
 
             from telegram import Bot
-            bot = Bot(token=BOT_TOKEN) 
-
+            bot = Bot(token=BOT_TOKEN)
+            
+            success_count = 0
             for user_id, expiry in drivers:
-                now = datetime.now(timezone.utc)
-                
-                # التحقق من حالة الاشتراك
-                is_active = False
-                if expiry:
-                    # تأكد أن expiry هو datetime ومزود بمعلومات المنطقة الزمنية
-                    if expiry.tzinfo is None:
-                        expiry = expiry.replace(tzinfo=timezone.utc)
-                    is_active = (expiry > now)
-
-                # تجهيز الأزرار بناءً على الاشتراك
-                if is_active:
-                    kb = InlineKeyboardMarkup([[InlineKeyboardButton("💬 مراسلة العميل", url=contact_url)]])
-                    footer = "\n✅ اشتراكك فعال"
-                else:
-                    # السائق غير المشترك يصله الطلب لكن بدون زر المراسلة
-                    kb = InlineKeyboardMarkup([[InlineKeyboardButton("💳 اشترك لتفعيل المراسلة", url="https://t.me/x3FreTx")]])
-                    footer = "\n⚠️ التواصل للمشتركين فقط"
-
                 try:
+                    # التحقق من صلاحية الاشتراك (بناءً على تاريخ الصورة 2026/02)
+                    now = datetime.now(timezone.utc)
+                    is_active = False
+                    if expiry:
+                        if expiry.tzinfo is None:
+                            expiry = expiry.replace(tzinfo=timezone.utc)
+                        is_active = (expiry > now)
+
+                    # تجهيز الرسالة
+                    contact_url = f"tg://user?id={cust_id}"
+                    msg_text = (
+                        f"🎯 <b>طلب مشوار جديد</b>\n"
+                        f"📍 الحي: {district}\n"
+                        f"👤 العميل: {cust_name}\n"
+                        f"📝 التفاصيل: {content}\n"
+                    )
+                    
+                    # الأزرار (أزرار شفافة)
+                    if is_active:
+                        kb = InlineKeyboardMarkup([[InlineKeyboardButton("💬 مراسلة العميل", url=contact_url)]])
+                        footer = "\n✅ اشتراكك فعال"
+                    else:
+                        kb = InlineKeyboardMarkup([[InlineKeyboardButton("💳 اشترك لتفعيل المراسلة", url="https://t.me/x3FreTx")]])
+                        footer = "\n⚠️ التواصل للمشتركين فقط"
+
+                    # الإرسال (تحويل user_id إلى int لضمان القبول)
                     await bot.send_message(
                         chat_id=int(user_id),
-                        text=base_text + footer,
+                        text=msg_text + footer,
                         reply_markup=kb,
-                        parse_mode=ParseMode.HTML
+                        parse_mode="HTML"
                     )
+                    success_count += 1
                 except Exception as e:
-                    # تخطي الحظر أو الحسابات المحذوفة
-                    continue
+                    # في الغالب السائق لم يبدأ البوت
+                    print(f"❌ فشل الإرسال للسائق {user_id}: {e}")
                 
-                await asyncio.sleep(0.05) # حماية من الـ Flood
+                await asyncio.sleep(0.05) # حماية من Flood
+
+            print(f"🏁 اكتمل البث. نجح الإرسال لـ {success_count} سائق.")
 
     except Exception as e:
-        print(f"❌ خطأ عام في دالة البث: {e}")
+        print(f"❌ خطأ فني في البث: {e}")
     finally:
         release_db_connection(conn)
-        print("🏁 انتهت عملية البث الشامل لجميع السائقين.")
 
 
 async def notify_channel(district, content, cust_id):
