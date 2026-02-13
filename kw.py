@@ -4156,24 +4156,36 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
             link_text = "انتقل لمصدر الطلب لمراسلة العميل"
 
         # --- حلقة التوزيع والفلترة ---
+                # --- حلقة التوزيع والفلترة (المطورة) ---
         for user_id, expiry, driver_districts in drivers:
             
             # 1. فلترة الأحياء (The Filtering Logic)
             should_receive = False
             
-            # تنظيف قائمة أحياء السائق (التعامل مع القيم الفارغة)
-            driver_areas_str = driver_districts if driver_districts else ""
+            # تنظيف المدخلات لضمان المطابقة
+            # target_district هو الحي القادم من الرادار
+            # driver_areas_str هي الأحياء المخزنة للسائق في القاعدة
+            req_dist = target_district.strip() 
+            driver_areas_str = str(driver_districts) if driver_districts else ""
             
-            if target_district == "عام":
-                # إذا كان الطلب "عام"، يرسل للكل (أو يمكنك حصره بمن اختار "عام")
+            # منطق المطابقة الجديد:
+            if req_dist == "عام":
+                # إذا كان الطلب عاماً، يرسل لجميع السائقين الـ 300
                 should_receive = True 
-            elif target_district in driver_areas_str:
-                # إذا كان اسم الحي موجوداً ضمن نص أحياء السائق
+            elif req_dist in driver_areas_str:
+                # إذا كان اسم الحي (مثلاً: الشوقية) موجوداً في نص أحياء السائق
                 should_receive = True
             
+            # --- تعديل إضافي للمرونة (اختياري) ---
+            # إذا أردت أن يصل الطلب العام فقط لمن لم يحدد أحياء، استبدل should_receive = True بـ:
+            # if not driver_areas_str: should_receive = True
+
             # إذا لم يطابق الشرط، تخطى هذا السائق
             if not should_receive:
                 continue
+            
+            # إذا وصل الكود هنا، يعني السائق اجتاز الفلترة وسينتقل لمرحلة التحقق من الاشتراك ثم الإرسال
+
 
             # 2. التحقق من حالة الاشتراك
             is_active = False
