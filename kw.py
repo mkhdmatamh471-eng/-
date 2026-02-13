@@ -4185,16 +4185,17 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                 
 
             # 3. صياغة الرسالة حسب الحالة
+                        # 3. صياغة الرسالة حسب الحالة
             if is_active:
-                # تنظيف النصوص لمنع انكسار تنسيق HTML
+                # التعديل: استخدم target_district الذي تم تنظيفه في بداية الدالة
                 safe_content = html.escape(content)
                 safe_cust_name = html.escape(cust_name)
-                safe_district = html.escape(district)
+                safe_district_display = html.escape(target_district) # استخدم target_district هنا
 
                 # رسالة المشتركين
                 msg_text = (
                     f"🎯 <b>طلب مشوار جديد في أحيائك</b>\n\n"
-                    f"📍 الحي: {safe_district}\n"
+                    f"📍 الحي: {safe_district_display}\n"
                     f"👤 العميل: {safe_cust_name}\n"
                     f"📝 التفاصيل: {safe_content}\n\n"
                     f"🔗 <a href='{final_link}'>{link_text}</a>\n"
@@ -4203,11 +4204,12 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                 )
                 active_tasks.append(send_with_retry(int(user_id), msg_text))
             else:
-                # --- لغير المشتركين: تشويق + رابط اشتراك ---
+                # لغير المشتركين: تأكد من تنظيف النص أيضاً هنا
+                safe_content_brief = html.escape(content[:40])
                 sub_link = "https://t.me/Servecestu"
                 msg_text = (
-                    f"🎯 <b>طلب مشوار جديد في {target_district}</b>\n\n"
-                    f"📝 التفاصيل: {content[:40]}...\n\n"
+                    f"🎯 <b>طلب مشوار جديد في {html.escape(target_district)}</b>\n\n"
+                    f"📝 التفاصيل: {safe_content_brief}...\n\n"
                     f"⚠️ التواصل متاح للمشتركين فقط\n"
                     f"💳 <a href='{sub_link}'>اضغط هنا للاشتراك وتفعيل المراسلة</a>"
                 )
