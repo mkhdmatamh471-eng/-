@@ -4302,6 +4302,7 @@ async def notify_channel(district, content, cust_id):
 
 
 async def handle_radar_signal(update, context):
+    print(f"📩 استلمت رسالة جديدة من: {update.effective_user.id}")
     try:
         text = update.message.text
         if not text or "#ORDER_DATA#" not in text:
