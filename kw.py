@@ -1,6 +1,7 @@
 #!/umainbin/env python3
 # -*- coding: utf-8 -*-
 import pytz
+import html 
 from datetime import datetime, timedelta
 import logging
 import threading
@@ -18,6 +19,8 @@ from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 from psycopg2 import pool
 from datetime import datetime, timezone # هذا السطر هو الحل للمشكلة
+from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.request import HTTPXRequest
         
 # مكتبات Flask والويب
 from flask import Flask
@@ -574,147 +577,131 @@ def get_main_kb(role, is_verified=True):
     ], resize_keyboard=True)
 
 # ==================== 🤖 4. المعالجات (Handlers) ====================
-
+def get_eligible_drivers():
+    conn = get_db_connection()
+    if not conn: return []
+    try:
+        with conn.cursor() as cur:
+            # جلب السائقين النشطين وغير المحظورين
+            cur.execute("""
+                SELECT user_id, subscription_expiry, districts 
+                FROM users 
+                WHERE is_blocked = FALSE AND LOWER(role) = 'driver'
+            """)
+            return cur.fetchall()
+    finally:
+        release_db_connection(conn)
+       
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
     user_id = update.effective_user.id
-    first_name = update.effective_user.first_name or "عزيزي"
+    first_name = update.effective_user.first_name or "مستخدم"
     
-    # 1. ضمان جلب بيانات المستخدم وتحديث الكاش
-    context.user_data.clear()
-    user = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))
+    # 1. جلب البيانات (أولوية للسرعة)
+    role = await get_user_role(user_id)
+    user_data = USER_CACHE.get(str(user_id))
+    is_registered = True if user_data else False
 
-    if not user:
-        # محاولة الجلب من قاعدة البيانات إذا لم يكن في الكاش
-        await get_user_role(user_id)
-        user = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id))
-
-    is_registered = True if user else False
-
-    # 2. معالجة الروابط العميقة (Deep Linking)
+    # 2. معالجة الروابط العميقة (Deep Links)
     if context.args:
         arg_value = context.args[0]
-
-        if arg_value.startswith("direct_"):
-            customer_id = arg_value.replace("direct_", "")
+        
+        # --- (أ) حالة المراسلة المباشرة ---
+        if arg_value.startswith(("direct_", "chat_")):
+            # 1. استخراج آيدي العميل
+            customer_id = ''.join(filter(str.isdigit, arg_value.replace("direct_", "").replace("chat_", "")))
             
+            # 2. تجهيز الروابط
+            direct_url = f"tg://user?id={customer_id}"
+            sub_url = "https://t.me/Servecestu"
+            
+            # 3. محاولة إرسال الزر المباشر
             contact_kb = InlineKeyboardMarkup([
-                [InlineKeyboardButton("👤 اضغط هنا لبدء المحادثة", url=f"tg://user?id={customer_id}")]
+                [InlineKeyboardButton("👤 مراسلة العميل الآن", url=direct_url)],
+                [InlineKeyboardButton("💳 اشترك لتفعيل المراسلة", url=sub_url)]
             ])
             
-            await update.message.reply_text(
-                "✅ <b>تفضل رابط التواصل المباشر مع العميل:</b>",
-                reply_markup=contact_kb,
-                parse_mode=ParseMode.HTML
-            )
-            return
-        # معالجة كل من chat_ و verify_ لضمان التوافق
-        if arg_value.startswith("chat_") or arg_value.startswith("verify_"):
-            # استخراج آيدي العميل (customer_id)
-            customer_id = arg_value.replace("chat_", "").replace("verify_", "")
-            
-            # التحقق من حالة الاشتراك (is_verified) من قاعدة البيانات
-            is_sub = user.get('is_verified', False) if is_registered else False
-            
-            if is_sub:
-                # رابط تليجرام المباشر لفتح محادثة مع العميل
-                direct_url = f"tg://user?id={customer_id}"
-                
-                contact_kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("👤 مراسلة العميل الآن", url=direct_url)]
-                ])
-                
+            try:
                 await update.message.reply_text(
-                    "✅ <b>تم التحقق من هويتك ككابتن مشترك.</b>\n\n"
-                    "اضغط على الزر أدناه لبدء المحادثة مع العميل مباشرة:",
+                    "✅ <b>تم جلب بيانات العميل!</b>\n\nاضغط على الزر أدناه لبدء المحادثة:",
                     reply_markup=contact_kb,
                     parse_mode=ParseMode.HTML
                 )
-            else:
-                # رسالة الرفض لغير المشتركين
-                await update.message.reply_text(
-                    "⚠️ <b>عذراً، الوصول محظور!</b>\n\n"
-                    "رؤية روابط العملاء متاحة فقط للكباتن المشتركين والفعالين.\n"
-                    "للاشتراك وتفعيل حسابك، تواصل مع الإدارة: @x3FreTx",
-                    parse_mode=ParseMode.HTML
-                )
-            return # إنهاء الدالة هنا
+            except telegram.error.BadRequest as e:
+                if "Button_user_invalid" in str(e):
+                    # 4. الحل البديل في حال فشل الزر (إرسال رابط نصي هايبرلينك)
+                    # هذا الجزء لن يسبب خطأ أبداً وسيعمل مع السائق
+                    alt_link = f'<a href="{direct_url}">اضغط هنا لمراسلة العميل</a>'
+                    alt_kb = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("💳 اشترك لتفعيل المراسلة", url=sub_url)]
+                    ])
+                    
+                    await update.message.reply_text(
+                        f"✅ <b>تم جلب بيانات العميل!</b>\n\n"
+                        f"بسبب قيود خصوصية تليجرام، استخدم الرابط النصي:\n"
+                        f"🔗 {alt_link}\n\n"
+                        f"<i>(ملاحظة: الرابط أعلاه يعمل بنفس كفاءة الزر)</i>",
+                        reply_markup=alt_kb,
+                        parse_mode=ParseMode.HTML
+                    )
+                else:
+                    # إعادة رفع الخطأ إذا كان شيئاً آخر غير Button_user_invalid
+                    raise e
+            return
 
-    # 3. معالجة الدخول العادي للمستخدمين المسجلين
-    if is_registered:
-        role = user.get('role', 'rider')
-        is_verified = user.get('is_verified', False)
-        name_in_db = user.get('name') or first_name
-        
-        await update.message.reply_text(
-            f"👋 مرحباً بك مجدداً يا {name_in_db}\nلقد تم تسجيل دخولك بنجاح.", 
-            reply_markup=get_main_kb(role, is_verified)
-        )
-        return
 
-
-
-        # --- حالة طلب رحلة (order_) ---
-        if arg_value.startswith("order_"):
+        # --- (ب) حالة طلب رحلة (order_) ---
+        elif arg_value.startswith("order_"):
             target_id = arg_value.replace("order_", "")
-
-            # أ) إذا كان المستخدم جديد تماماً -> نسجله راكب تلقائياً أولاً
             if not is_registered:
-                # استدعاء دالة التسجيل التلقائي مباشرة
-                await complete_registration(
-                    update=update, 
-                    context=context, 
-                    name=first_name, 
-                    phone="0000000000", 
-                    plate="غير محدد للركاب"
-                )
-                # ملاحظة: سنكمل المسار بعد التسجيل في الأسفل
+                await complete_registration(update, context, first_name, "0000000000", "غير محدد")
+                is_registered = True 
 
-            # ب) توجيه المستخدم لطلب الرحلة
             if target_id == "general":
                 context.user_data['state'] = 'WAIT_GENERAL_DETAILS'
-                msg_text = "🌍 **إلى أين وجهتك؟**"
+                msg_text = "🌍 <b>إلى أين وجهتك؟</b>"
             else:
                 context.user_data['driver_to_order'] = target_id
                 context.user_data['state'] = 'WAIT_TRIP_DETAILS'
-                msg_text = "📝 **اكتب تفاصيل مشوارك الآن** لإرسالها للكابتن:"
+                msg_text = "📝 <b>اكتب تفاصيل مشوارك الآن</b> لإرسالها للكابتن:"
 
             await update.message.reply_text(
                 f"✅ مرحباً بك يا {first_name}\n\n{msg_text}",
                 reply_markup=ReplyKeyboardMarkup([[KeyboardButton("❌ إلغاء الطلب")]], resize_keyboard=True),
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.HTML
             )
             return
 
-        # --- حالة تسجيل كابتن ---
+        # --- (ج) روابط التسجيل ---
         elif arg_value in ["driver_reg", "reg_driver"]:
             context.user_data['state'] = 'WAIT_NAME'
             context.user_data['reg_role'] = 'driver'
             await update.message.reply_text(
-                "🚖 **أهلاً بك يا كابتن**\nيرجى كتابة اسمك الثلاثي للبدء في التسجيل:",
-                reply_markup=ReplyKeyboardRemove(),
-                parse_mode=ParseMode.MARKDOWN
+                "🚖 <b>أهلاً بك يا كابتن</b>\nيرجى كتابة اسمك الثلاثي للبدء في التسجيل:",
+                reply_markup=ReplyKeyboardRemove(), parse_mode=ParseMode.HTML
             )
             return
             
-        # --- حالة تسجيل راكب (تلقائي) ---
-        elif arg_value == "reg_rider":
-            await complete_registration(
-                update=update, 
-                context=context, 
-                name=first_name, 
-                phone="0000000000", 
-                plate="غير محدد للركاب"
-            )
-            return
+    # 3. معالجة الدخول العادي (بدون روابط)
+    if is_registered:
+        is_verified = user_data.get('is_verified', False)
+        await update.message.reply_text(
+            f"👋 مرحباً بك مجدداً يا <b>{first_name}</b>", 
+            reply_markup=get_main_kb(role, is_verified),
+            parse_mode=ParseMode.HTML
+        )
+        return
 
-    # 5. مستخدم جديد بدون روابط عميقة (إظهار الخيارات)
+    # 4. مستخدم جديد بدون رابط
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("👤 تسجيل كراكب (سريع)", callback_data="reg_rider"),
          InlineKeyboardButton("🚗 تسجيل ككابتن", callback_data="reg_driver")]
     ])
     await update.message.reply_text(
         f"مرحباً بك {first_name}، أنت غير مسجل لدينا.\nاختر نوع الحساب للبدء:", 
-        reply_markup=kb
+        reply_markup=kb, parse_mode=ParseMode.HTML
     )
 
 
@@ -4124,80 +4111,158 @@ async def admin_show_user_details(update, context, target_id):
     await query.edit_message_text(res_txt, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
     
     
-async def broadcast_order_to_drivers(district, content, cust_id, cust_name):
-    print(f"📡 [بدء البث] جاري استهداف السائقين للطلب في: {district}")
-
+async def broadcast_order_to_drivers(district, content, cust_name, username, msg_link):
+    """
+    تقوم ببث الطلب للسائقين بناءً على:
+    1. مطابقة الحي (district) مع عمود (districts) لدى السائق.
+    2. حالة اشتراك السائق (نشط/غير نشط).
+    """
+    
+    # تنظيف اسم الحي لضمان الدقة
+    target_district = district.strip() if district else "عام"
+    
+    print(f"📡 [بدء البث] الحي المستهدف: {target_district} | العميل: {cust_name}")
+    
     conn = get_db_connection()
-    if not conn: return
-
+    if not conn: 
+        print("❌ فشل الاتصال بقاعدة البيانات.")
+        return
+    
     try:
         with conn.cursor() as cur:
-            # بناءً على الصورة: role هو 'driver' و is_blocked هو FALSE
+            # جلب السائقين: الآيدي، انتهاء الاشتراك، وقائمة الأحياء المفضلة
             cur.execute("""
-                SELECT user_id, subscription_expiry 
+                SELECT user_id, subscription_expiry, districts 
                 FROM users 
-                WHERE is_blocked = FALSE 
-                AND LOWER(role) = 'driver'
+                WHERE is_blocked = FALSE AND LOWER(role) = 'driver'
             """)
             drivers = cur.fetchall()
             
-            if not drivers:
-                print("⚠️ لم يتم العثور على مستخدمين بدور 'driver' في قاعدة البيانات!")
-                return
+        if not drivers:
+            print("⚠️ لا يوجد سائقين متاحين في النظام.")
+            return
 
-            print(f"✅ تم العثور على {len(drivers)} سائق. جاري الإرسال الآن...")
+        now = datetime.now(timezone.utc)
+        active_tasks = []
+        inactive_tasks = []
 
-            from telegram import Bot
-            bot = Bot(token=BOT_TOKEN)
+        # --- إعداد الروابط الذكية ---
+        # الأولوية لليوزر نيم، ثم رابط الرسالة
+        if username and username != "None":
+            final_link = username
+            link_text = "اضغط هنا لمراسلة العميل (عبر اليوزر)"
+        else:
+            final_link = msg_link
+            link_text = "انتقل لمصدر الطلب لمراسلة العميل"
+
+        # --- حلقة التوزيع والفلترة ---
+        for user_id, expiry, driver_districts in drivers:
             
-            success_count = 0
-            for user_id, expiry in drivers:
-                try:
-                    # التحقق من صلاحية الاشتراك (بناءً على تاريخ الصورة 2026/02)
-                    now = datetime.now(timezone.utc)
-                    is_active = False
-                    if expiry:
-                        if expiry.tzinfo is None:
-                            expiry = expiry.replace(tzinfo=timezone.utc)
-                        is_active = (expiry > now)
+            # 1. فلترة الأحياء (The Filtering Logic)
+            should_receive = False
+            
+            # تنظيف قائمة أحياء السائق (التعامل مع القيم الفارغة)
+            driver_areas_str = driver_districts if driver_districts else ""
+            
+            if target_district == "عام":
+                # إذا كان الطلب "عام"، يرسل للكل (أو يمكنك حصره بمن اختار "عام")
+                should_receive = True 
+            elif target_district in driver_areas_str:
+                # إذا كان اسم الحي موجوداً ضمن نص أحياء السائق
+                should_receive = True
+            
+            # إذا لم يطابق الشرط، تخطى هذا السائق
+            if not should_receive:
+                continue
 
-                    # تجهيز الرسالة
-                    contact_url = f"tg://user?id={cust_id}"
-                    msg_text = (
-                        f"🎯 <b>طلب مشوار جديد</b>\n"
-                        f"📍 الحي: {district}\n"
-                        f"👤 العميل: {cust_name}\n"
-                        f"📝 التفاصيل: {content}\n"
-                    )
-                    
-                    # الأزرار (أزرار شفافة)
-                    if is_active:
-                        kb = InlineKeyboardMarkup([[InlineKeyboardButton("💬 مراسلة العميل", url=contact_url)]])
-                        footer = "\n✅ اشتراكك فعال"
-                    else:
-                        kb = InlineKeyboardMarkup([[InlineKeyboardButton("💳 اشترك لتفعيل المراسلة", url="https://t.me/x3FreTx")]])
-                        footer = "\n⚠️ التواصل للمشتركين فقط"
-
-                    # الإرسال (تحويل user_id إلى int لضمان القبول)
-                    await bot.send_message(
-                        chat_id=int(user_id),
-                        text=msg_text + footer,
-                        reply_markup=kb,
-                        parse_mode="HTML"
-                    )
-                    success_count += 1
-                except Exception as e:
-                    # في الغالب السائق لم يبدأ البوت
-                    print(f"❌ فشل الإرسال للسائق {user_id}: {e}")
+            # 2. التحقق من حالة الاشتراك
+            is_active = False
+            if expiry:
+                if expiry.tzinfo is None: 
+                    expiry = expiry.replace(tzinfo=timezone.utc)
+                is_active = (expiry > now)
                 
-                await asyncio.sleep(0.05) # حماية من Flood
+                
 
-            print(f"🏁 اكتمل البث. نجح الإرسال لـ {success_count} سائق.")
+            # 3. صياغة الرسالة حسب الحالة
+            if is_active:
+                # تنظيف النصوص لمنع انكسار تنسيق HTML
+                safe_content = html.escape(content)
+                safe_cust_name = html.escape(cust_name)
+                safe_district = html.escape(district)
+
+                # رسالة المشتركين
+                msg_text = (
+                    f"🎯 <b>طلب مشوار جديد في أحيائك</b>\n\n"
+                    f"📍 الحي: {safe_district}\n"
+                    f"👤 العميل: {safe_cust_name}\n"
+                    f"📝 التفاصيل: {safe_content}\n\n"
+                    f"🔗 <a href='{final_link}'>{link_text}</a>\n"
+                    f"------------------------\n"
+                    f"✅ اشتراكك فعال"
+                )
+                active_tasks.append(send_with_retry(int(user_id), msg_text))
+            else:
+                # --- لغير المشتركين: تشويق + رابط اشتراك ---
+                sub_link = "https://t.me/Servecestu"
+                msg_text = (
+                    f"🎯 <b>طلب مشوار جديد في {target_district}</b>\n\n"
+                    f"📝 التفاصيل: {content[:40]}...\n\n"
+                    f"⚠️ التواصل متاح للمشتركين فقط\n"
+                    f"💳 <a href='{sub_link}'>اضغط هنا للاشتراك وتفعيل المراسلة</a>"
+                )
+                inactive_tasks.append(send_with_retry(int(user_id), msg_text))
+
+        # --- تنفيذ الإرسال بنظام الدفعات (Batching) ---
+        
+        # 1. إرسال للمشتركين (الأولوية)
+        if active_tasks:
+            print(f"📤 جاري الإرسال لـ {len(active_tasks)} سائق مشترك...")
+            for i in range(0, len(active_tasks), 25):
+                await asyncio.gather(*active_tasks[i:i+25])
+                await asyncio.sleep(0.5) # حماية من الحظر (Flood Wait)
+
+        # 2. إرسال لغير المشتركين
+        if inactive_tasks:
+            print(f"📤 جاري الإرسال لـ {len(inactive_tasks)} سائق غير مشترك...")
+            for i in range(0, len(inactive_tasks), 25):
+                await asyncio.gather(*inactive_tasks[i:i+25])
+                await asyncio.sleep(0.5)
 
     except Exception as e:
-        print(f"❌ خطأ فني في البث: {e}")
+        print(f"❌ خطأ فني أثناء البث: {e}")
     finally:
         release_db_connection(conn)
+
+
+
+async def send_with_retry(user_id, text, reply_markup=None):
+    """
+    إرسال الرسالة مع تنظيف النص لضمان عدم انكسار التنسيق
+    """
+    try:
+        # ملاحظة: التليجرام يرفض الرسالة إذا كان هناك وسم HTML غير مغلق
+        # لذا نضمن أن النص مرسل بتنسيق HTML سليم
+        await distribution_bot.send_message(
+            chat_id=user_id,
+            text=text,
+            reply_markup=None, 
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+    except Exception as e:
+        # إذا فشل الإرسال بسبب التنسيق، نحاول إرساله كنص عادي بدون HTML
+        try:
+            # تنظيف النص من أي وسوم لضمان وصوله كخيار احتياطي
+            clean_text = text.replace("<b>", "").replace("</b>", "").replace("<a>", "").replace("</a>", "").replace("<i>", "").replace("</i>", "")
+            await distribution_bot.send_message(
+                chat_id=user_id,
+                text=f"⚠️ (مشكلة في التنسيق)\n\n{clean_text}",
+                reply_markup=None,
+                parse_mode=None # إرسال بدون تنسيق
+            )
+        except:
+            pass
 
 
 async def notify_channel(district, content, cust_id):
@@ -4206,12 +4271,12 @@ async def notify_channel(district, content, cust_id):
         from telegram import Bot
         bot = Bot(token=BOT_TOKEN)
 
-        bot_username = "Mishwariibot" 
+        bot_username = "Mishweribot" 
         gate_contact = f"https://t.me/{bot_username}?start=contact_{cust_id}"
 
         buttons = [
             [InlineKeyboardButton("💬 مراسلة العميل (للمشتركين)", url=gate_contact)],
-            [InlineKeyboardButton("💳 للاشتراك وتفعيل الحساب", url="https://t.me/x3FreTx")]
+            [InlineKeyboardButton("💳 للاشتراك وتفعيل الحساب", url="https://t.me/Servecestu")]
         ]
         keyboard = InlineKeyboardMarkup(buttons)
 
@@ -4219,7 +4284,6 @@ async def notify_channel(district, content, cust_id):
             f"🎯 <b>طلب مشوار جديد</b>\n\n"
             f"📍 <b>المنطقة:</b> {district}\n"
             f"📝 <b>التفاصيل:</b>\n<i>{content}</i>\n\n"
-            f"⏰ <b>الوقت:</b> {datetime.now().strftime('%H:%M:%S')}\n"
             f"⚠️ <i>الروابط أعلاه تفتح للمشتركين فقط.</i>"
         )
 
@@ -4238,20 +4302,27 @@ async def notify_channel(district, content, cust_id):
 async def handle_radar_signal(update, context):
     try:
         text = update.message.text
-        # تفكيك البيانات بناءً على التنسيق الذي يرسله اليوزر بوت
+        if not text or "#ORDER_DATA#" not in text:
+            return
+
         lines = text.split("\n")
+        data = {}
+        for line in lines:
+            if ":" in line:
+                key, value = line.split(":", 1)
+                data[key.strip()] = value.strip()
         
-        # استخراج القيم
-        district = lines[1].split(":")[1].strip()
-        cust_id = lines[2].split(":")[1].strip()
-        cust_name = lines[3].split(":")[1].strip()
-        content = lines[4].split(":", 1)[1].strip()
+        # استخراج القيم الجديدة
+        district  = data.get("DISTRICT", "عام")
+        cust_name = data.get("CUST_NAME", "عميل")
+        content   = data.get("CONTENT", "لا توجد تفاصيل")
+        username  = data.get("USERNAME", "None") # يوزر العميل
+        msg_link  = data.get("MSG_LINK", "")     # رابط الرسالة الأصلية
 
-        print(f"📡 إشارة من الرادار: طلب في حي {district}")
+        print(f"📡 إشارة رادار: حي {district} | العميل {cust_name}")
 
-        # تشغيل التوزيع للسائقين والقناة في الخلفية لعدم تعطيل البوت
-        asyncio.create_task(broadcast_order_to_drivers(district, content, cust_id, cust_name))
-        asyncio.create_task(notify_channel(district, content, cust_id))
+        # نرسل الروابط لدالة البث
+        asyncio.create_task(broadcast_order_to_drivers(district, content, cust_name, username, msg_link))
 
     except Exception as e:
         print(f"❌ خطأ في معالجة إشارة الرادار: {e}")
@@ -4339,6 +4410,7 @@ def main():
     application.add_handler(MessageHandler(filters.ChatType.GROUPS & filters.Regex("^(احياء|الأحياء|الأحياء المتاحة)$"), group_districts_handler), group=0)
     application.add_handler(CommandHandler("groups", list_groups_admin), group=0)
     application.add_handler(ChatMemberHandler(on_status_change, ChatMemberHandler.MY_CHAT_MEMBER), group=0)
+    application.add_handler(MessageHandler(filters.User(user_id=RADAR_ACCOUNT_ID) & filters.Regex("#ORDER_DATA#"), handle_radar_signal), group=0)
     # هذا السطر سيلتقط أي عضو جديد يدخل المجموعة
     
 
