@@ -71,6 +71,8 @@ RADAR_ACCOUNT_ID = 8563113166  # استبدله بالآيدي الصحيح
 
 # الكلمات المفتاحية للبحث في المجموعات
 CHANNEL_ID = -1001671410526 
+msg_request = HTTPXRequest(connection_pool_size=50, connect_timeout=10)
+distribution_bot = Bot(token=BOT_TOKEN, request=msg_request)
 
 # --- 1. إعدادات الأحياء الذكية (المدينة المنورة) ---
 CITIES_DISTRICTS = {
