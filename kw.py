@@ -4214,11 +4214,12 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
 
             if is_active:
                 # رسالة المشتركين (كامل التفاصيل + زر مراسلة)
+                                     # --- للمشتركين ---
                 msg_text = (
                     f"🎯 <b>طلب مشوار جديد في أحيائك</b>\n\n"
                     f"📍 الحي: {safe_district_display}\n"
                     f"👤 العميل: {safe_cust_name}\n"
-                    f"📝 التفاصيل: {safe_content}\n"
+                    f"📝 التفاصيل:\n{safe_content}\n"  # التعديل هنا: أضفنا سطر جديد قبل المحتوى
                     f"------------------------\n"
                     f"✅ اشتراكك فعال"
                 )
@@ -4231,9 +4232,11 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
             else:
                 # لغير المشتركين: (كامل التفاصيل + زر اشتراك)
                 sub_link = "https://t.me/Servecestu"
+                                       # --- لغير المشتركين ---
+                sub_link = "https://t.me/Servecestu"
                 msg_text = (
                     f"🎯 <b>طلب مشوار جديد في {safe_district_display}</b>\n\n"
-                    f"📝 التفاصيل: {safe_content}\n\n"
+                    f"📝 التفاصيل:\n{safe_content}\n\n"  # التعديل هنا: سطر جديد لضمان استيعاب كامل النص
                     f"⚠️ التواصل متاح للمشتركين فقط"
                 )
                 # إنشاء الزر لغير المشتركين
@@ -4328,25 +4331,23 @@ async def notify_channel(district, content, cust_id):
 
 
 async def handle_radar_signal(update, context):
-    print(f"📩 استلمت رسالة جديدة من: {update.effective_user.id}")
     try:
         text = update.message.text
         if not text or "#ORDER_DATA#" not in text:
             return
 
-        lines = text.split("\n")
-        data = {}
-        for line in lines:
-            if ":" in line:
-                key, value = line.split(":", 1)
-                data[key.strip()] = value.strip()
-        
-        # استخراج القيم الجديدة
-        district  = data.get("DISTRICT", "عام")
-        cust_name = data.get("CUST_NAME", "عميل")
-        content   = data.get("CONTENT", "لا توجد تفاصيل")
-        username  = data.get("USERNAME", "None") # يوزر العميل
-        msg_link  = data.get("MSG_LINK", "")     # رابط الرسالة الأصلية
+        # استخدام Regex لسحب القيم بدقة (يدعم الأسطر المتعددة في CONTENT)
+        def extract(tag, source):
+            # يبحث عن التاغ ويأخذ كل ما بعده حتى بداية التاغ التالي أو نهاية النص
+            pattern = rf"{tag}:(.*?)(?=\n[A-Z_]+:|$)"
+            match = re.search(pattern, source, re.DOTALL)
+            return match.group(1).strip() if match else None
+
+        district  = extract("DISTRICT", text) or "عام"
+        cust_name = extract("CUST_NAME", text) or "عميل"
+        content   = extract("CONTENT", text) or "لا توجد تفاصيل"
+        username  = extract("USERNAME", text) or "None"
+        msg_link  = extract("MSG_LINK", text) or ""
 
         print(f"📡 إشارة رادار: حي {district} | العميل {cust_name}")
 
