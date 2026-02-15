@@ -4168,13 +4168,18 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
         inactive_tasks = []
 
         # --- إعداد الروابط الذكية ---
-        # الأولوية لليوزر نيم، ثم رابط الرسالة
-        if username and username != "None":
-            final_link = username
-            link_text = "اضغط هنا لمراسلة العميل (عبر اليوزر)"
-        else:
-            final_link = msg_link
-            link_text = "انتقل لمصدر الطلب لمراسلة العميل"
+        # --- 1. بناء لوحة أزرار التواصل للمشتركين (Double Buttons) ---
+        driver_keyboard = []
+        
+        # الزر الأول: الخاص (يعمل فقط إذا كان هناك يوزرنيم)
+        if username and username != "None" and username.startswith("http"):
+            driver_keyboard.append([InlineKeyboardButton(text=f"👤 مراسلة العميل (خاص)", url=username)])
+        
+        # الزر الثاني: مصدر الطلب (الخيار المضمون لفتح الخاص من المجموعة)
+        if msg_link and msg_link.startswith("http"):
+            driver_keyboard.append([InlineKeyboardButton(text="🔗 اذهب لمصدر الطلب (القروب)", url=msg_link)])
+
+        reply_markup_active = InlineKeyboardMarkup(driver_keyboard) if driver_keyboard else None
 
         # --- حلقة التوزيع والفلترة ---
                 # --- حلقة التوزيع والفلترة (المطورة) ---
@@ -4213,36 +4218,31 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
             safe_district_display = html.escape(target_district)
 
             if is_active:
-                # رسالة المشتركين (كامل التفاصيل + زر مراسلة)
-                                     # --- للمشتركين ---
+                # --- تنسيق المشتركين ---
                 msg_text = (
-                    f"🎯 <b>طلب مشوار جديد في أحيائك</b>\n\n"
-                    f"📍 الحي: {safe_district_display}\n"
-                    f"👤 العميل: {safe_cust_name}\n"
-                    f"📝 التفاصيل:\n{safe_content}\n"  # التعديل هنا: أضفنا سطر جديد قبل المحتوى
-                    f"------------------------\n"
-                    f"✅ اشتراكك فعال"
+                    f"🎯 <b>طلب مشوار جديد في أحيائك</b>\n"
+                    f"━━━━━━━━━━━━━━\n"
+                    f"📍 <b>الحي:</b> {safe_district_display}\n"
+                    f"👤 <b>العميل:</b> {safe_cust_name}\n"
+                    f"📝 <b>التفاصيل:</b>\n{safe_content}\n"
+                    f"━━━━━━━━━━━━━━\n"
+                    f"✅ <i>اضغط على الأزرار بالأسفل للتواصل</i>"
                 )
-                # إنشاء الزر للمشتركين
-                keyboard = [[InlineKeyboardButton(text=link_text, url=final_link)]]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                active_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup))
+                active_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup_active))
             
             else:
-                # لغير المشتركين: (كامل التفاصيل + زر اشتراك)
-                sub_link = "https://t.me/Servecestu"
-                                       # --- لغير المشتركين ---
+                # --- تنسيق غير المشتركين ---
                 sub_link = "https://t.me/Servecestu"
                 msg_text = (
-                    f"🎯 <b>طلب مشوار جديد في {safe_district_display}</b>\n\n"
-                    f"📝 التفاصيل:\n{safe_content}\n\n"  # التعديل هنا: سطر جديد لضمان استيعاب كامل النص
-                    f"⚠️ التواصل متاح للمشتركين فقط"
+                    f"🎯 <b>طلب مشوار جديد في {safe_district_display}</b>\n"
+                    f"━━━━━━━━━━━━━━\n"
+                    f"📝 <b>التفاصيل:</b>\n{safe_content}\n\n"
+                    f"⚠️ <b>التواصل متاح للمشتركين فقط</b>\n"
+                    f"━━━━━━━━━━━━━━"
                 )
-                # إنشاء الزر لغير المشتركين
-                keyboard = [[InlineKeyboardButton(text="💳 اضغط هنا للاشتراك وتفعيل المراسلة", url=sub_link)]]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
+                keyboard_sub = InlineKeyboardMarkup([[InlineKeyboardButton(text="💳 اشتراك وتفعيل المراسلة", url=sub_link)]])
+                inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=keyboard_sub))
+
                 inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup))
 
         # --- تنفيذ الإرسال بنظام الدفعات (Batching) ---
