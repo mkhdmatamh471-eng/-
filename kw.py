@@ -4184,43 +4184,25 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
         # --- حلقة التوزيع والفلترة ---
                 # --- حلقة التوزيع والفلترة (المطورة) ---
         # --- حلقة التوزيع والبث العام (المحدثة) ---
-        for user_id, expiry, driver_districts in drivers:
+                # --- حلقة التوزيع والبث العام (النسخة المصححة) ---
+        for user_id, expiry, _ in drivers: # استخدمنا _ لتجاهل عمود الأحياء غير المستخدم
             
-            # 1. إلغاء فلترة الأحياء (إرسال للجميع)
-            # تم جعل القيمة True دائماً ليتجاهل البوت فحص الأحياء المحددة للسائق
-            should_receive = True 
-            
-            # (اختياري) يمكنك الإبقاء على طباعة المعلومات للـ Log فقط
-            req_dist = target_district.strip() 
-            
-            # إذا لم تكن هناك رغبة في أي شروط مستقبلية، يمكن حذف الأسطر التالية
-            # ولكن تركناها لضمان عدم انكسار أي متغيرات مستخدمة لاحقاً في الكود
-            if not should_receive:
-                continue
-            
-            # إذا وصل الكود هنا، يعني السائق اجتاز الفلترة وسينتقل لمرحلة التحقق من الاشتراك ثم الإرسال
-
-
-            # 2. التحقق من حالة الاشتراك
+            # 1. التحقق من حالة الاشتراك
             is_active = False
             if expiry:
                 if expiry.tzinfo is None: 
                     expiry = expiry.replace(tzinfo=timezone.utc)
                 is_active = (expiry > now)
-                
-                
-
-            # 3. صياغة الرسالة حسب الحالة
-                        # 3. صياغة الرسالة حسب الحالة
-                                                # 3. صياغة الرسالة حسب الحالة
-            safe_content = html.escape(content) # تم تنظيف المحتوى كاملاً هنا
+            
+            # 2. تنظيف النصوص
+            safe_content = html.escape(content)
             safe_cust_name = html.escape(cust_name)
             safe_district_display = html.escape(target_district)
 
             if is_active:
                 # --- تنسيق المشتركين ---
                 msg_text = (
-                    f"🎯 <b>طلب مشوار جديد في أحيائك</b>\n"
+                    f"🎯 <b>طلب مشوار جديد</b>\n"
                     f"━━━━━━━━━━━━━━\n"
                     f"📍 <b>الحي:</b> {safe_district_display}\n"
                     f"👤 <b>العميل:</b> {safe_cust_name}\n"
@@ -4228,6 +4210,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                     f"━━━━━━━━━━━━━━\n"
                     f"✅ <i>اضغط على الأزرار بالأسفل للتواصل</i>"
                 )
+                # الإصلاح: التأكد من إرسال reply_markup_active
                 active_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup_active))
             
             else:
@@ -4241,9 +4224,10 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                     f"━━━━━━━━━━━━━━"
                 )
                 keyboard_sub = InlineKeyboardMarkup([[InlineKeyboardButton(text="💳 اشتراك وتفعيل المراسلة", url=sub_link)]])
+                
+                # الإصلاح: تم تغيير المتغير من reply_markup (الخاطئ) إلى keyboard_sub (الصحيح)
                 inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=keyboard_sub))
 
-  
 
         # --- تنفيذ الإرسال بنظام الدفعات (Batching) ---
         
