@@ -4243,7 +4243,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                 keyboard_sub = InlineKeyboardMarkup([[InlineKeyboardButton(text="💳 اشتراك وتفعيل المراسلة", url=sub_link)]])
                 inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=keyboard_sub))
 
-                inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup))
+  
 
         # --- تنفيذ الإرسال بنظام الدفعات (Batching) ---
         
