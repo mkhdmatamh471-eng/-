@@ -75,8 +75,6 @@ msg_request = HTTPXRequest(connection_pool_size=50, connect_timeout=10)
 distribution_bot = Bot(token=BOT_TOKEN, request=msg_request)
 
 # --- 1. إعدادات الأحياء الذكية (المدينة المنورة) ---
-اضف كلمه عام 
-اضف كلمه عام 
 CITIES_DISTRICTS = {
     "المدينة المنورة": [
         "عام", "أبو مرخة", "أبيار علي", "الأسواف", "البخاري", "الإسكان", "البحر",
