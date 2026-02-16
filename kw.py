@@ -75,10 +75,12 @@ msg_request = HTTPXRequest(connection_pool_size=50, connect_timeout=10)
 distribution_bot = Bot(token=BOT_TOKEN, request=msg_request)
 
 # --- 1. إعدادات الأحياء الذكية (المدينة المنورة) ---
+اضف كلمه عام 
+اضف كلمه عام 
 CITIES_DISTRICTS = {
     "المدينة المنورة": [
         # --- الأحياء السكنية (تم إضافة الخليل والنصر والسكب والقصواء) ---
-        "أبو مرخة", "أبيار علي", "الأسواف", "البخاري", "الإسكان", "البحر", 
+        "عام", "أبو مرخة", "أبيار علي", "الأسواف", "البخاري", "الإسكان", "البحر",
         "البدراني", "الجمعة", "الجرف", "الحزام", "الحمراء", "الخاتم", "الخالدية", 
         "الدائرة", "الدائري", "الدويخله", "الدويمة", "الدعيثة", "الرانونا", "الرناونة", 
         "الربوة", "السيح", "الشروق", "الشرق", "الشهداء", "الشيبية", "الظاهرة", 
@@ -89,7 +91,7 @@ CITIES_DISTRICTS = {
         "بئر الماشي", "بئر عثمان", "باقدو", "بني حارثة", "بني ظفر", "تلال علي", 
         "تلال", "حمراء الأسد", "دفاع", "ذو الحليفة", "رهط", "سيد الشهداء", 
         "سلطانة", "سكة الحديد", "السقيا", "شظاة", "شوران", "عروة", "قباء", 
-        "قربان", "مخطط التلال", "مهزور", "وعيرة", "العصيبي", "تلعة الهبوب", 
+        "قربان", "مخطط التلال", "مهزور", "وعيرة", "تلعة الهبوب", 
         "الزهراء", "الفيحاء", "المنار", "سكن الحرس", "السديري", "المطار القديم",
         "السكب", "الورود", "الراية", "القصواء", "الهدى", "الروابي", "الريان",
         "الجابرة", "الرويعي", "المطار الجديد", "المزيني", "المعذر", 
@@ -636,7 +638,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # 2. تجهيز الروابط
             direct_url = f"tg://user?id={customer_id}"
-            sub_url = "https://t.me/Servecestu"
+            sub_url = "https://t.me/x3FreTx"
             
             # 3. محاولة إرسال الزر المباشر
             contact_kb = InlineKeyboardMarkup([
@@ -4134,24 +4136,27 @@ async def admin_show_user_details(update, context, target_id):
     
 async def broadcast_order_to_drivers(district, content, cust_name, username, msg_link):
     """
-    تقوم ببث الطلب للسائقين بناءً على:
-    1. مطابقة الحي (district) مع عمود (districts) لدى السائق.
-    2. حالة اشتراك السائق (نشط/غير نشط).
+    تقوم ببث الطلب للسائقين مع فلترة دقيقة للأحياء وتوفير أزرار تواصل مزدوجة.
     """
-    
-    # تنظيف اسم الحي لضمان الدقة
     target_district = district.strip() if district else "عام"
+        # --- منطق تحديد المدينة ديناميكياً ---
+    detected_city = ""
+    for city, districts in CITIES_DISTRICTS.items():
+        if target_district in districts:
+            detected_city = city
+            break
+    
+    # صياغة اسم المدينة للعنوان
+    city_suffix = f" في {detected_city}" if detected_city else ""
     
     print(f"📡 [بدء البث] الحي المستهدف: {target_district} | العميل: {cust_name}")
     
     conn = get_db_connection()
     if not conn: 
-        print("❌ فشل الاتصال بقاعدة البيانات.")
         return
     
     try:
         with conn.cursor() as cur:
-            # جلب السائقين: الآيدي، انتهاء الاشتراك، وقائمة الأحياء المفضلة
             cur.execute("""
                 SELECT user_id, subscription_expiry, districts 
                 FROM users 
@@ -4160,14 +4165,12 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
             drivers = cur.fetchall()
             
         if not drivers:
-            print("⚠️ لا يوجد سائقين متاحين في النظام.")
             return
 
         now = datetime.now(timezone.utc)
         active_tasks = []
         inactive_tasks = []
 
-        # --- إعداد الروابط الذكية ---
         # --- 1. بناء لوحة أزرار التواصل للمشتركين (Double Buttons) ---
         driver_keyboard = []
         
@@ -4181,20 +4184,29 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
 
         reply_markup_active = InlineKeyboardMarkup(driver_keyboard) if driver_keyboard else None
 
-        # --- حلقة التوزيع والفلترة ---
-                # --- حلقة التوزيع والفلترة (المطورة) ---
-        # --- حلقة التوزيع والبث العام (المحدثة) ---
-                # --- حلقة التوزيع والبث العام (النسخة المصححة) ---
-        for user_id, expiry, _ in drivers: # استخدمنا _ لتجاهل عمود الأحياء غير المستخدم
-            
-            # 1. التحقق من حالة الاشتراك
+        # --- 2. حلقة التوزيع والفلترة ---
+        for user_id, expiry, driver_districts in drivers:
             is_active = False
             if expiry:
-                if expiry.tzinfo is None: 
-                    expiry = expiry.replace(tzinfo=timezone.utc)
+                if expiry.tzinfo is None: expiry = expiry.replace(tzinfo=timezone.utc)
                 is_active = (expiry > now)
             
-            # 2. تنظيف النصوص
+            driver_areas_list = [d.strip() for d in driver_districts.split(',')] if driver_districts else []
+
+            # منطق الفلترة
+            should_receive = False
+            if is_active:
+                if "عام" in driver_areas_list or target_district in driver_areas_list:
+                    should_receive = True
+                elif target_district == "عام":
+                    should_receive = False 
+            else:
+                should_receive = True # لغير المشتركين كدعاية
+
+            if not should_receive:
+                continue
+
+            # صياغة الرسالة بتنسيق HTML نظيف
             safe_content = html.escape(content)
             safe_cust_name = html.escape(cust_name)
             safe_district_display = html.escape(target_district)
@@ -4202,7 +4214,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
             if is_active:
                 # --- تنسيق المشتركين ---
                 msg_text = (
-                    f"🎯 <b>طلب مشوار جديد</b>\n"
+                    f"🎯 <b>طلب مشوار جديد{city_suffix}</b>\n"
                     f"━━━━━━━━━━━━━━\n"
                     f"📍 <b>الحي:</b> {safe_district_display}\n"
                     f"👤 <b>العميل:</b> {safe_cust_name}\n"
@@ -4210,39 +4222,31 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                     f"━━━━━━━━━━━━━━\n"
                     f"✅ <i>اضغط على الأزرار بالأسفل للتواصل</i>"
                 )
-                # الإصلاح: التأكد من إرسال reply_markup_active
                 active_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup_active))
             
             else:
                 # --- تنسيق غير المشتركين ---
-                sub_link = "https://t.me/Servecestu"
+                sub_link = "https://t.me/x3FreTx"
                 msg_text = (
-                    f"🎯 <b>طلب مشوار جديد في {safe_district_display}</b>\n"
+                    f"🎯 <b>طلب مشوار جديد{city_suffix}</b>\n"
                     f"━━━━━━━━━━━━━━\n"
-                    f"📝 <b>التفاصيل:</b>\n{safe_content}\n\n"
-                    f"⚠️ <b>التواصل متاح للمشتركين فقط</b>\n"
-                    f"━━━━━━━━━━━━━━"
+                    f"📍 <b>الحي:</b> {safe_district_display}\n"
+                    f"📝 <b>التفاصيل:</b>\n{safe_content}\n"
+                    f"━━━━━━━━━━━━━━\n"
+                    f"⚠️ <b>التواصل متاح للمشتركين فقط</b>"
                 )
                 keyboard_sub = InlineKeyboardMarkup([[InlineKeyboardButton(text="💳 اشتراك وتفعيل المراسلة", url=sub_link)]])
-                
-                # الإصلاح: تم تغيير المتغير من reply_markup (الخاطئ) إلى keyboard_sub (الصحيح)
                 inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=keyboard_sub))
 
-
-        # --- تنفيذ الإرسال بنظام الدفعات (Batching) ---
-        
-        # 1. إرسال للمشتركين (الأولوية)
+        # تنفيذ البث على دفعات
         if active_tasks:
-            print(f"📤 جاري الإرسال لـ {len(active_tasks)} سائق مشترك...")
-            for i in range(0, len(active_tasks), 25):
-                await asyncio.gather(*active_tasks[i:i+25])
-                await asyncio.sleep(0.5) # حماية من الحظر (Flood Wait)
+            for i in range(0, len(active_tasks), 20):
+                await asyncio.gather(*active_tasks[i:i+20])
+                await asyncio.sleep(0.5)
 
-        # 2. إرسال لغير المشتركين
         if inactive_tasks:
-            print(f"📤 جاري الإرسال لـ {len(inactive_tasks)} سائق غير مشترك...")
-            for i in range(0, len(inactive_tasks), 25):
-                await asyncio.gather(*inactive_tasks[i:i+25])
+            for i in range(0, len(inactive_tasks), 20):
+                await asyncio.gather(*inactive_tasks[i:i+20])
                 await asyncio.sleep(0.5)
 
     except Exception as e:
@@ -4251,6 +4255,32 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
         release_db_connection(conn)
 
 
+async def send_with_retry(user_id, text, reply_markup=None):
+    """
+    إرسال الرسالة مع دعم الأزرار (reply_markup) والتنظيف الاحتياطي
+    """
+    try:
+        await distribution_bot.send_message(
+            chat_id=user_id,
+            text=text,
+            reply_markup=reply_markup, # التعديل هنا: مررنا المتغير بدلاً من None
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+    except Exception as e:
+        print(f"⚠️ فشل التنسيق لـ {user_id}: {e}")
+        try:
+            # تنظيف يدوي للوسوم في حال انكسار الـ HTML
+            import re
+            clean_text = re.sub('<[^<]+?>', '', text)
+            await distribution_bot.send_message(
+                chat_id=user_id,
+                text=f"⚠️ (مشكلة في التنسيق)\n\n{clean_text}",
+                reply_markup=reply_markup, # نرسل الأزرار حتى في المحاولة الاحتياطية
+                parse_mode=None 
+            )
+        except Exception as e2:
+            print(f"❌ فشل الإرسال النهائي: {e2}")
 
 async def send_with_retry(user_id, text, reply_markup=None):
     """
@@ -4291,7 +4321,7 @@ async def notify_channel(district, content, cust_id):
 
         buttons = [
             [InlineKeyboardButton("💬 مراسلة العميل (للمشتركين)", url=gate_contact)],
-            [InlineKeyboardButton("💳 للاشتراك وتفعيل الحساب", url="https://t.me/Servecestu")]
+            [InlineKeyboardButton("💳 للاشتراك وتفعيل الحساب", url="https://t.me/x3FreTx")]
         ]
         keyboard = InlineKeyboardMarkup(buttons)
 
