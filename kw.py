@@ -1354,18 +1354,20 @@ async def global_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['state'] = None
             user_id = update.effective_user.id
             
-            # 1. جلب البيانات من الكاش (بالمعرف الرقمي والنصي)
-            u_info = USER_CACHE.get(user_id) or USER_CACHE.get(str(user_id)) or {}
+            # 1. جلب الرتبة مباشرة من قاعدة البيانات لضمان الدقة
+            role = await get_user_role(user_id) 
             
-            # 2. تحديد الرتبة (وإذا لم توجد في الكاش، نجلبها من قاعدة البيانات)
-            role = u_info.get('role')
-            if not role:
-                # نستخدم await لأن دالة get_user_role معرّفة كـ async
-                role = await get_user_role(user_id) 
+            # 2. تحديث الكاش بالرتبة الجديدة فوراً
+            if user_id not in USER_CACHE:
+                USER_CACHE[user_id] = {}
             
-            verified_status = u_info.get('is_verified', False)
+            USER_CACHE[user_id]['role'] = role
+            
+            # 3. جلب حالة التوثيق (تأكد من وجود القيمة في الكاش أو افترض True)
+            verified_status = USER_CACHE[user_id].get('is_verified', True)
 
-            # 3. إرسال القائمة الصحيحة بناءً على الرتبة المحققة
+            print(f"🔄 تصحيح مسار: المستخدم {user_id} ألغى المراسلة، الرتبة الحقيقية: {role}")
+
             await update.message.reply_text(
                 "تم الإلغاء والعودة للقائمة الرئيسية.", 
                 reply_markup=get_main_kb(role, verified_status)
