@@ -4338,23 +4338,38 @@ async def handle_radar_signal(update, context):
         if not text or "#ORDER_DATA#" not in text:
             return
 
-        # استخدام Regex لسحب القيم بدقة (يدعم الأسطر المتعددة في CONTENT)
+        # وظيفة استخراج القيم باستخدام Regex
         def extract(tag, source):
-            # يبحث عن التاغ ويأخذ كل ما بعده حتى بداية التاغ التالي أو نهاية النص
+            # البحث عن التاغ واستخراج ما بعده حتى التاغ التالي أو نهاية النص
             pattern = rf"{tag}:(.*?)(?=\n[A-Z_]+:|$)"
             match = re.search(pattern, source, re.DOTALL)
             return match.group(1).strip() if match else None
 
+        # 1. استخراج البيانات من الطرد (بما فيها CUST_ID الجديد)
         district  = extract("DISTRICT", text) or "عام"
         cust_name = extract("CUST_NAME", text) or "عميل"
+        cust_id   = extract("CUST_ID", text)    # استخراج المعرف الرقمي
         content   = extract("CONTENT", text) or "لا توجد تفاصيل"
         username  = extract("USERNAME", text) or "None"
         msg_link  = extract("MSG_LINK", text) or ""
 
-        print(f"📡 إشارة رادار: حي {district} | العميل {cust_name}")
+        # التأكد من وجود ID العميل قبل الاستمرار
+        if not cust_id:
+            print(f"⚠️ تحذير: تم استلام طلب بدون CUST_ID من {cust_name}")
+            # يمكنك وضع قيمة افتراضية أو البحث عنه في مكان آخر إذا لزم الأمر
 
-        # نرسل الروابط لدالة البث
-        asyncio.create_task(broadcast_order_to_drivers(district, content, cust_name, username, msg_link))
+        print(f"📡 إشارة رادار: حي {district} | العميل {cust_name} | معرف {cust_id}")
+
+        # 2. استدعاء دالة البث مع تمرير كافة المتغيرات الـ 6 المطلوبة
+        # تأكد من ترتيب المتغيرات كما هو في تعريف الدالة
+        asyncio.create_task(broadcast_order_to_drivers(
+            district=district, 
+            content=content, 
+            cust_name=cust_name, 
+            cust_id=cust_id,    # هذا هو المتغير الناقص الذي سبب المشكلة
+            username=username, 
+            msg_link=msg_link
+        ))
 
     except Exception as e:
         print(f"❌ خطأ في معالجة إشارة الرادار: {e}")
