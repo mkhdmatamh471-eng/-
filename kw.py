@@ -65,7 +65,7 @@ def run_flask():
 # 🔴🔴 هام: بيانات الاتصال (يفضل وضعها في متغيرات بيئة لاحقاً)
 
 BOT_TOKEN = "8498451295:AAGt1R7THllSjYtEe5hvIEPnPhRkS_iBcnU"
-ADMIN_IDS = [7513630480, 8563113166, 7580027135]
+ADMIN_IDS = [7513630480, 7580027135, 8563113166]
 # ضع هنا الآيدي الخاص بحسابك (الذي يعمل عليه اليوزر بوت)
 RADAR_ACCOUNT_ID = 8563113166  # استبدله بالآيدي الصحيح
 
@@ -625,7 +625,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # 2. تجهيز الروابط
             direct_url = f"tg://user?id={customer_id}"
-            sub_url = "https://t.me/Servecestu"
+            sub_url = "https://t.me/x3FreTx"
             
             # 3. محاولة إرسال الزر المباشر
             contact_kb = InlineKeyboardMarkup([
@@ -1062,7 +1062,7 @@ async def complete_registration(update, context, name, phone=None, plate=None):
         if role == 'driver':
             support_kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("💬 مراسلة الإدارة", callback_data="contact_admin_start")],
-                [InlineKeyboardButton("👤 الحساب المباشر", url="https://t.me/Servecestu")]
+                [InlineKeyboardButton("👤 الحساب المباشر", url="https://t.me/x3FreTx")]
             ])
             
             await context.bot.send_message(
@@ -3711,7 +3711,7 @@ async def contact_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     admin_text = (
         "📝 **أرسل رسالتك أو شكواك الآن في رسالة واحدة:**\n\n"
         "أو يمكنك التحدث مباشرة عبر الرابط التالي:\n"
-        "👤 @Servecestu"
+        "👤 @x3FreTx"
     )
     
     await update.message.reply_text(
@@ -4121,22 +4121,23 @@ async def admin_show_user_details(update, context, target_id):
     await query.edit_message_text(res_txt, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
     
     
-async def broadcast_order_to_drivers(district, content, cust_name, username, msg_link):
+# أضفنا cust_id كبرامتر جديد في الدالة
+async def broadcast_order_to_drivers(district, content, cust_name, cust_id, username, msg_link):
     """
-    تقوم ببث الطلب للسائقين مع فلترة دقيقة للأحياء وتوفير أزرار تواصل مزدوجة.
+    تقوم ببث الطلب للسائقين مع زر تواصل مباشر باستخدام المعرف الرقمي (User ID).
     """
     target_district = district.strip() if district else "عام"
-        # --- منطق تحديد المدينة ديناميكياً ---
+    
+    # --- منطق تحديد المدينة ديناميكياً ---
     detected_city = ""
     for city, districts in CITIES_DISTRICTS.items():
         if target_district in districts:
             detected_city = city
             break
     
-    # صياغة اسم المدينة للعنوان
     city_suffix = f" في {detected_city}" if detected_city else ""
     
-    print(f"📡 [بدء البث] الحي المستهدف: {target_district} | العميل: {cust_name}")
+    print(f"📡 [بدء البث] الحي: {target_district} | العميل: {cust_name} | معرف العميل: {cust_id}")
     
     conn = get_db_connection()
     if not conn: 
@@ -4158,16 +4159,18 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
         active_tasks = []
         inactive_tasks = []
 
-        # --- 1. بناء لوحة أزرار التواصل للمشتركين (Double Buttons) ---
+        # --- 1. بناء لوحة أزرار التواصل للمشتركين (استخدام الرابط المطلوب) ---
         driver_keyboard = []
         
-        # الزر الأول: الخاص (يعمل فقط إذا كان هناك يوزرنيم)
-        if username and username != "None" and username.startswith("http"):
-            driver_keyboard.append([InlineKeyboardButton(text=f"👤 مراسلة العميل (خاص)", url=username)])
+        # إنشاء زر التواصل باستخدام المعرف الرقمي الممرر من كود القنص
+        if cust_id:
+            # الرابط الذي يعمل لفتح الخاص مباشرة
+            direct_url = f"tg://openmessage?user_id={cust_id}"
+            driver_keyboard.append([
+                InlineKeyboardButton(text="👤 مراسلة العميل (خاص مباشر)", url=direct_url)
+            ])
         
-        # الزر الثاني: مصدر الطلب (الخيار المضمون لفتح الخاص من المجموعة)
-        if msg_link and msg_link.startswith("http"):
-            driver_keyboard.append([InlineKeyboardButton(text="🔗 اذهب لمصدر الطلب (القروب)", url=msg_link)])
+        # تم إزالة زر "مصدر الطلب" كما طلبت لتركيز التواصل في الخاص فقط
 
         reply_markup_active = InlineKeyboardMarkup(driver_keyboard) if driver_keyboard else None
 
@@ -4180,7 +4183,6 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
             
             driver_areas_list = [d.strip() for d in driver_districts.split(',')] if driver_districts else []
 
-            # منطق الفلترة
             should_receive = False
             if is_active:
                 if "عام" in driver_areas_list or target_district in driver_areas_list:
@@ -4188,7 +4190,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                 elif target_district == "عام":
                     should_receive = False 
             else:
-                should_receive = True # لغير المشتركين كدعاية
+                should_receive = True # لغير المشتركين كدعاية وتنبيه
 
             if not should_receive:
                 continue
@@ -4207,13 +4209,13 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                     f"👤 <b>العميل:</b> {safe_cust_name}\n"
                     f"📝 <b>التفاصيل:</b>\n{safe_content}\n"
                     f"━━━━━━━━━━━━━━\n"
-                    f"✅ <i>اضغط على الأزرار بالأسفل للتواصل</i>"
+                    f"✅ <i>اضغط على الزر بالأسفل لمراسلته فوراً</i>"
                 )
                 active_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup_active))
             
             else:
                 # --- تنسيق غير المشتركين ---
-                sub_link = "https://t.me/Servecestu"
+                sub_link = "https://t.me/x3FreTx"
                 msg_text = (
                     f"🎯 <b>طلب مشوار جديد{city_suffix}</b>\n"
                     f"━━━━━━━━━━━━━━\n"
@@ -4225,7 +4227,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                 keyboard_sub = InlineKeyboardMarkup([[InlineKeyboardButton(text="💳 اشتراك وتفعيل المراسلة", url=sub_link)]])
                 inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=keyboard_sub))
 
-        # تنفيذ البث على دفعات
+        # تنفيذ البث
         if active_tasks:
             for i in range(0, len(active_tasks), 20):
                 await asyncio.gather(*active_tasks[i:i+20])
@@ -4240,7 +4242,6 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
         print(f"❌ خطأ فني أثناء البث: {e}")
     finally:
         release_db_connection(conn)
-
 
 async def send_with_retry(user_id, text, reply_markup=None):
     """
@@ -4308,7 +4309,7 @@ async def notify_channel(district, content, cust_id):
 
         buttons = [
             [InlineKeyboardButton("💬 مراسلة العميل (للمشتركين)", url=gate_contact)],
-            [InlineKeyboardButton("💳 للاشتراك وتفعيل الحساب", url="https://t.me/Servecestu")]
+            [InlineKeyboardButton("💳 للاشتراك وتفعيل الحساب", url="https://t.me/x3FreTx")]
         ]
         keyboard = InlineKeyboardMarkup(buttons)
 
@@ -4337,23 +4338,38 @@ async def handle_radar_signal(update, context):
         if not text or "#ORDER_DATA#" not in text:
             return
 
-        # استخدام Regex لسحب القيم بدقة (يدعم الأسطر المتعددة في CONTENT)
+        # وظيفة استخراج القيم باستخدام Regex
         def extract(tag, source):
-            # يبحث عن التاغ ويأخذ كل ما بعده حتى بداية التاغ التالي أو نهاية النص
+            # البحث عن التاغ واستخراج ما بعده حتى التاغ التالي أو نهاية النص
             pattern = rf"{tag}:(.*?)(?=\n[A-Z_]+:|$)"
             match = re.search(pattern, source, re.DOTALL)
             return match.group(1).strip() if match else None
 
+        # 1. استخراج البيانات من الطرد (بما فيها CUST_ID الجديد)
         district  = extract("DISTRICT", text) or "عام"
         cust_name = extract("CUST_NAME", text) or "عميل"
+        cust_id   = extract("CUST_ID", text)    # استخراج المعرف الرقمي
         content   = extract("CONTENT", text) or "لا توجد تفاصيل"
         username  = extract("USERNAME", text) or "None"
         msg_link  = extract("MSG_LINK", text) or ""
 
-        print(f"📡 إشارة رادار: حي {district} | العميل {cust_name}")
+        # التأكد من وجود ID العميل قبل الاستمرار
+        if not cust_id:
+            print(f"⚠️ تحذير: تم استلام طلب بدون CUST_ID من {cust_name}")
+            # يمكنك وضع قيمة افتراضية أو البحث عنه في مكان آخر إذا لزم الأمر
 
-        # نرسل الروابط لدالة البث
-        asyncio.create_task(broadcast_order_to_drivers(district, content, cust_name, username, msg_link))
+        print(f"📡 إشارة رادار: حي {district} | العميل {cust_name} | معرف {cust_id}")
+
+        # 2. استدعاء دالة البث مع تمرير كافة المتغيرات الـ 6 المطلوبة
+        # تأكد من ترتيب المتغيرات كما هو في تعريف الدالة
+        asyncio.create_task(broadcast_order_to_drivers(
+            district=district, 
+            content=content, 
+            cust_name=cust_name, 
+            cust_id=cust_id,    # هذا هو المتغير الناقص الذي سبب المشكلة
+            username=username, 
+            msg_link=msg_link
+        ))
 
     except Exception as e:
         print(f"❌ خطأ في معالجة إشارة الرادار: {e}")
