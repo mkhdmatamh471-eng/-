@@ -4121,22 +4121,23 @@ async def admin_show_user_details(update, context, target_id):
     await query.edit_message_text(res_txt, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
     
     
-async def broadcast_order_to_drivers(district, content, cust_name, username, msg_link):
+# أضفنا cust_id كبرامتر جديد في الدالة
+async def broadcast_order_to_drivers(district, content, cust_name, cust_id, username, msg_link):
     """
-    تقوم ببث الطلب للسائقين مع فلترة دقيقة للأحياء وتوفير أزرار تواصل مزدوجة.
+    تقوم ببث الطلب للسائقين مع زر تواصل مباشر باستخدام المعرف الرقمي (User ID).
     """
     target_district = district.strip() if district else "عام"
-        # --- منطق تحديد المدينة ديناميكياً ---
+    
+    # --- منطق تحديد المدينة ديناميكياً ---
     detected_city = ""
     for city, districts in CITIES_DISTRICTS.items():
         if target_district in districts:
             detected_city = city
             break
     
-    # صياغة اسم المدينة للعنوان
     city_suffix = f" في {detected_city}" if detected_city else ""
     
-    print(f"📡 [بدء البث] الحي المستهدف: {target_district} | العميل: {cust_name}")
+    print(f"📡 [بدء البث] الحي: {target_district} | العميل: {cust_name} | معرف العميل: {cust_id}")
     
     conn = get_db_connection()
     if not conn: 
@@ -4158,16 +4159,18 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
         active_tasks = []
         inactive_tasks = []
 
-        # --- 1. بناء لوحة أزرار التواصل للمشتركين (Double Buttons) ---
+        # --- 1. بناء لوحة أزرار التواصل للمشتركين (استخدام الرابط المطلوب) ---
         driver_keyboard = []
         
-        # الزر الأول: الخاص (يعمل فقط إذا كان هناك يوزرنيم)
-        if username and username != "None" and username.startswith("http"):
-            driver_keyboard.append([InlineKeyboardButton(text=f"👤 مراسلة العميل (خاص)", url=username)])
+        # إنشاء زر التواصل باستخدام المعرف الرقمي الممرر من كود القنص
+        if cust_id:
+            # الرابط الذي يعمل لفتح الخاص مباشرة
+            direct_url = f"tg://openmessage?user_id={cust_id}"
+            driver_keyboard.append([
+                InlineKeyboardButton(text="👤 مراسلة العميل (خاص مباشر)", url=direct_url)
+            ])
         
-        # الزر الثاني: مصدر الطلب (الخيار المضمون لفتح الخاص من المجموعة)
-        if msg_link and msg_link.startswith("http"):
-            driver_keyboard.append([InlineKeyboardButton(text="🔗 اذهب لمصدر الطلب (القروب)", url=msg_link)])
+        # تم إزالة زر "مصدر الطلب" كما طلبت لتركيز التواصل في الخاص فقط
 
         reply_markup_active = InlineKeyboardMarkup(driver_keyboard) if driver_keyboard else None
 
@@ -4180,7 +4183,6 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
             
             driver_areas_list = [d.strip() for d in driver_districts.split(',')] if driver_districts else []
 
-            # منطق الفلترة
             should_receive = False
             if is_active:
                 if "عام" in driver_areas_list or target_district in driver_areas_list:
@@ -4188,7 +4190,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                 elif target_district == "عام":
                     should_receive = False 
             else:
-                should_receive = True # لغير المشتركين كدعاية
+                should_receive = True # لغير المشتركين كدعاية وتنبيه
 
             if not should_receive:
                 continue
@@ -4207,7 +4209,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                     f"👤 <b>العميل:</b> {safe_cust_name}\n"
                     f"📝 <b>التفاصيل:</b>\n{safe_content}\n"
                     f"━━━━━━━━━━━━━━\n"
-                    f"✅ <i>اضغط على الأزرار بالأسفل للتواصل</i>"
+                    f"✅ <i>اضغط على الزر بالأسفل لمراسلته فوراً</i>"
                 )
                 active_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup_active))
             
@@ -4225,7 +4227,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                 keyboard_sub = InlineKeyboardMarkup([[InlineKeyboardButton(text="💳 اشتراك وتفعيل المراسلة", url=sub_link)]])
                 inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=keyboard_sub))
 
-        # تنفيذ البث على دفعات
+        # تنفيذ البث
         if active_tasks:
             for i in range(0, len(active_tasks), 20):
                 await asyncio.gather(*active_tasks[i:i+20])
@@ -4240,7 +4242,6 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
         print(f"❌ خطأ فني أثناء البث: {e}")
     finally:
         release_db_connection(conn)
-
 
 async def send_with_retry(user_id, text, reply_markup=None):
     """
