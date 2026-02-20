@@ -110,7 +110,7 @@ CITIES_DISTRICTS = {
 # ==========================================
 
 # تأكد أن DB_URL في ريندر هو رابط الـ Transaction (المنتهي بـ :6543)
-DB_URL = postgresql://postgres.nmteaqxrtcegxmgvsbzr:mohammedfahdypb@aws-1-ap-south-1.pooler.supabase.com:6543/postgres
+DB_URL = "postgresql://postgres.nmteaqxrtcegxmgvsbzr:mohammedfahdypb@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
 try:
     # إنشاء مجمع يتسع لـ 1 إلى 20 اتصال متزامن
     db_pool = psycopg2.pool.ThreadedConnectionPool(
