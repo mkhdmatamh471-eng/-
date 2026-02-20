@@ -23,7 +23,7 @@ from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.request import HTTPXRequest
         
 # مكتبات Flask والويب
-from flask import Flask
+
 
 # مكتبات قاعدة البيانات
 import psycopg2
@@ -45,19 +45,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import MessageHandler, filters, ContextTypes, ChatMemberHandler
 from psycopg2 import pool
 # إعداد السيرفر لـ Render
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Bot is alive! 🚀"
-
- # تأكد من وجود هذا الاستيراد في أعلى الملف
-
-def run_flask():
-    # جلب المنفذ من ريندر، وإذا لم يوجد يستخدم 8080 كاحتياطي
-    port = int(os.environ.get("PORT", 8080))
-    # host='0.0.0.0' ضرورية جداً ليتمكن ريندر من رؤية السيرفر
-    app.run(host='0.0.0.0', port=port)
 
 
 # ==================== ⚙️ 1. الإعدادات ====================
@@ -4364,7 +4351,7 @@ async def handle_radar_signal(update, context):
 # ==================== 🏁 6. التشغيل الرئيسي ====================
 def main():
     # 1. تهيئة السيرفر وقاعدة البيانات
-    threading.Thread(target=run_flask, daemon=True).start()
+    
     init_db()
 
     application = ApplicationBuilder().token(BOT_TOKEN).build()
