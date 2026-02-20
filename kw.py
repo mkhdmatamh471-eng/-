@@ -4486,11 +4486,28 @@ def main():
     # ---------------------------------------------------------
     # المجموعة 3: نظام التوجيه (Chat Relay)
     # ---------------------------------------------------------
-    # لا تعمل هذه إلا إذا لم تكن الرسالة (أمر) أو (بيانات تسجيل)
-    application.add_handler(MessageHandler(
-        filters.ChatType.PRIVATE & (filters.TEXT | filters.LOCATION) & ~filters.COMMAND,
-        chat_relay_handler
-    ), group=2)
+# اجعل المجموعة 1 (أو 0) لضمان الأولوية القصوى لنظام الدردشة
+    # نظام الدردشة الوسيطة (Chat Relay)
+    # تم ضبط المجموعة لتكون 4 بناءً على طلبك
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE & 
+            ~filters.COMMAND & 
+            (
+                filters.TEXT | 
+                filters.LOCATION | 
+                filters.PHOTO | 
+                filters.VOICE | 
+                filters.VIDEO | 
+                filters.AUDIO | 
+                filters.DOCUMENT
+            ),
+            chat_relay_handler
+        ), 
+        group=1
+    )
+
+
 
     # ---------------------------------------------------------
     # المجموعة 4: المواقع والمجموعات العامة
