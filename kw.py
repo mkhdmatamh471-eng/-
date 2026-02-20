@@ -4500,7 +4500,7 @@ def main():
                 filters.VOICE | 
                 filters.VIDEO | 
                 filters.AUDIO | 
-                filters.DOCUMENT
+                filters.Document.ALL
             ),
             chat_relay_handler
         ), 
