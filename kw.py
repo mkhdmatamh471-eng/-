@@ -4490,7 +4490,7 @@ def main():
     application.add_handler(MessageHandler(
         filters.ChatType.PRIVATE & (filters.TEXT | filters.LOCATION) & ~filters.COMMAND,
         chat_relay_handler
-    ), group=3)
+    ), group=2)
 
     # ---------------------------------------------------------
     # المجموعة 4: المواقع والمجموعات العامة
