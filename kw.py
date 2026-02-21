@@ -4468,7 +4468,7 @@ def main():
     application.add_handler(MessageHandler(
     filters.LOCATION & (filters.UpdateType.MESSAGE | filters.UpdateType.EDITED_MESSAGE), 
     location_handler
-), group=1)
+), group=2)
 
 
     # ---------------------------------------------------------
