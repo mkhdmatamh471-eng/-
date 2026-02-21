@@ -758,18 +758,18 @@ async def get_drivers_list_by_district(district_name):
 
 
 async def send_order_to_drivers(drivers, order_text, customer, context):
-    """إرسال الطلب للسائقين المشتركين فقط لضمان العدالة والسرعة"""
+    """إرسال الطلب للسائقين المشتركين + قائمة المدراء بنفس الأزرار"""
     district_name = extract_district_from_text(order_text) or "غير محدد"
     rider_id = customer.id
     default_price = "0" 
     
-    # تحضير لوحة الأزرار
+    # 1. تحضير لوحة الأزرار (نفس الأزرار للجميع)
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("✅ قبول الطلب", callback_data=f"accept_gen_{rider_id}_{default_price}")],
         [InlineKeyboardButton("💵 إقتراح سعر", callback_data=f"bid_req_{rider_id}")] 
     ])
 
-    # تحسين محتوى الرسالة
+    # 2. تحسين محتوى الرسالة
     message_content = (
         f"🚨 **طلب مشوار جديد!**\n\n"
         f"📍 **الحي:** {district_name}\n"
@@ -778,11 +778,22 @@ async def send_order_to_drivers(drivers, order_text, customer, context):
         f"⚠️ _يجب أن يكون اشتراكك سارياً لتتمكن من القبول._"
     )
 
-    async def safe_send(driver):
-        # التأكد من استخدام المعرف الصحيح (chat_id أو user_id)
-        target_id = driver.get('chat_id') or driver.get('user_id')
-        if not target_id: return
-        
+    # 3. بناء قائمة المستهدفين النهائية (سائقين + مدراء)
+    # نستخدم set لضمان عدم إرسال الرسالة مرتين للأدمن إذا كان مسجلاً كسائق
+    final_target_ids = set()
+
+    # إضافة معرفات السائقين
+    for d in drivers:
+        tid = d.get('chat_id') or d.get('user_id')
+        if tid:
+            final_target_ids.add(tid)
+            
+    # إضافة معرفات الإدارة (الموجودة في بداية الكود)
+    for admin_id in ADMIN_IDS:
+        final_target_ids.add(admin_id)
+
+    # 4. دالة الإرسال الآمن
+    async def safe_send(target_id):
         try:
             await context.bot.send_message(
                 chat_id=target_id,
@@ -791,12 +802,11 @@ async def send_order_to_drivers(drivers, order_text, customer, context):
                 parse_mode="Markdown"
             )
         except Exception as e:
-            # إذا حظر السائق البوت، يفضل تسجيل ذلك لتنظيف القاعدة لاحقاً
-            print(f"⚠️ تعذر الإرسال للسائق {target_id}: {e}")
+            print(f"⚠️ تعذر الإرسال إلى {target_id}: {e}")
 
-    # التنفيذ المتوازي
-    tasks = [safe_send(d) for d in drivers]
-    if tasks:
+    # 5. التنفيذ المتوازي لجميع المعرفات
+    if final_target_ids:
+        tasks = [safe_send(tid) for tid in final_target_ids]
         await asyncio.gather(*tasks)
 
 # --- التسجيل ---
