@@ -1152,53 +1152,71 @@ async def broadcast_general_order(update: Update, context: ContextTypes.DEFAULT_
 
     sent_messages_info = [] 
     await sync_all_users()
-# 🟢 أضف هذا السطر هنا لتفادي الخطأ
+
+    # 🟢 جلب الوقت الحالي لتفادي الخطأ
     from datetime import datetime
     import pytz
     now = datetime.now(pytz.utc) 
 
+    # 1. إنشاء قاموس لجمع المستهدفين (المعرف: المسافة) لمنع التكرار
+    targets_to_send = {}
+
+    # --- فلترة السائقين ---
     for d in CACHED_DRIVERS:
+        user_id = d['user_id']
+        
         # 1. تخطي الراكب نفسه أو من ليس لديه إحداثيات
-        if d['user_id'] == rider_id or d.get('lat') is None: 
+        if user_id == rider_id or d.get('lat') is None: 
             continue
             
-        # 2. التعديل الجديد: منع السائقين غير الموثقين من استلام الطلبات
-        # نفترض أن قيمة التوثيق مخزنة في 'is_verified' داخل الكاش
-
         # 2. منع السائقين غير الموثقين
         if not d.get('is_verified', False):
             continue
 
-        # --- 🟢 التعديل الجديد: منع السائقين غير المشتركين 🟢 ---
+        # 3. منع السائقين غير المشتركين
         expiry = d.get('subscription_expiry')
-        # إذا لم يوجد تاريخ أو كان التاريخ قد انتهى، نتخطى السائق فوراً
         if not expiry or expiry < now:
             continue
-        # --- 🔴 نهاية التعديل 🔴 ---
 
         dist = get_distance(r_lat, r_lon, d['lat'], d['lon'])
 
-        # 3. إرسال الطلب فقط لمن هم في نطاق 15 كم
+        # 4. إضافة السائق إذا كان في نطاق 10 كم
         if dist <= 10.0: 
-            kb = InlineKeyboardMarkup([
-                [InlineKeyboardButton(f"✅ قبول ({price} ريال)", callback_data=f"accept_gen_{rider_id}_{price}")],
-                [InlineKeyboardButton("💵 اقتراح سعر آخر", callback_data=f"bid_req_{rider_id}")] 
-            ])
+            targets_to_send[user_id] = f"{dist:.1f}"
 
-            try:
-                msg = await context.bot.send_message(
-                    chat_id=d['user_id'],
-                    text=(f"🚨 **طلب جديد قريب منك!**\n\n"
-                          f"📍 المسافة: {dist:.1f} كم\n"
-                          f"📝 الوجهة: {details}\n"
-                          f"💰 العرض: {price} ريال\n\n"
-                          f"🗺 [موقع الراكب على الخريطة]({map_link})"),
-                    reply_markup=kb,
-                    parse_mode=ParseMode.MARKDOWN
-                )
-                sent_messages_info.append({'chat_id': d['user_id'], 'message_id': msg.message_id})
-            except: 
-                continue
+    # --- إضافة الإدارة (ADMIN_IDS) ---
+    # نفترض أن ADMIN_IDS معرفة في أعلى الملف، مثل: ADMIN_IDS = [1234, 5678]
+    for admin_id in ADMIN_IDS:
+        # إذا كان الأدمن ليس موجوداً بالفعل في القائمة (لم يتم إضافته كسائق قريب)
+        if admin_id not in targets_to_send:
+            # إذا كان الأدمن هو الراكب نفسه، نتخطاه (اختياري)
+            if admin_id == rider_id: continue 
+            
+            targets_to_send[admin_id] = "نسخة إدارة"
+
+    # --- تجهيز الأزرار والإرسال للجميع ---
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"✅ قبول ({price} ريال)", callback_data=f"accept_gen_{rider_id}_{price}")],
+        [InlineKeyboardButton("💵 اقتراح سعر آخر", callback_data=f"bid_req_{rider_id}")] 
+    ])
+
+    # المرور على كل المستهدفين (سائقين مطابقين + إدارة) وإرسال الرسالة
+    for target_id, dist_text in targets_to_send.items():
+        try:
+            msg = await context.bot.send_message(
+                chat_id=target_id,
+                text=(f"🚨 **طلب جديد قريب منك!**\n\n"
+                      f"📍 المسافة: {dist_text} كم\n"
+                      f"📝 الوجهة: {details}\n"
+                      f"💰 العرض: {price} ريال\n\n"
+                      f"🗺 [موقع الراكب على الخريطة]({map_link})"),
+                reply_markup=kb,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            sent_messages_info.append({'chat_id': target_id, 'message_id': msg.message_id})
+        except Exception as e: 
+            print(f"⚠️ تعذر الإرسال للمعرف {target_id}: {e}")
+            continue
             
     return sent_messages_info
 
