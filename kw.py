@@ -4453,7 +4453,7 @@ def main():
     application.add_handler(MessageHandler(
         filters.ChatType.PRIVATE & filters.REPLY & filters.User(ADMIN_IDS), 
         admin_reply_handler
-    ), group=1)
+    ), group=2)
     
     # يُفضل وضع معالج الإنهاء في مجموعة أولوية (group=-1) 
 # لضمان اعتراضه قبل أن يذهب النص لمعالج الـ Proxy أو الـ Global
