@@ -4361,9 +4361,7 @@ async def handle_radar_signal(update, context):
         if not text or "#ORDER_DATA#" not in text:
             return
 
-        # استخدام Regex لسحب القيم بدقة (يدعم الأسطر المتعددة في CONTENT)
         def extract(tag, source):
-            # يبحث عن التاغ ويأخذ كل ما بعده حتى بداية التاغ التالي أو نهاية النص
             pattern = rf"{tag}:(.*?)(?=\n[A-Z_]+:|$)"
             match = re.search(pattern, source, re.DOTALL)
             return match.group(1).strip() if match else None
@@ -4374,10 +4372,18 @@ async def handle_radar_signal(update, context):
         username  = extract("USERNAME", text) or "None"
         msg_link  = extract("MSG_LINK", text) or ""
 
+        # --- التعديل هنا لضمان فتح الروابط الخاصة ---
+        # إذا كان الرابط لا يبدأ بـ http، نقوم بتنظيفه لضمان قبوله في أزرار التليجرام
+        if msg_link.startswith("tg://"):
+            # الروابط العميقة (Deep Links) ممتازة للفتح المباشر داخل التطبيق
+            final_link = msg_link
+        else:
+            final_link = msg_link
+
         print(f"📡 إشارة رادار: حي {district} | العميل {cust_name}")
 
-        # نرسل الروابط لدالة البث
-        asyncio.create_task(broadcast_order_to_drivers(district, content, cust_name, username, msg_link))
+        # تمرير الرابط النهائي (final_link) لدالة البث
+        asyncio.create_task(broadcast_order_to_drivers(district, content, cust_name, username, final_link))
 
     except Exception as e:
         print(f"❌ خطأ في معالجة إشارة الرادار: {e}")
