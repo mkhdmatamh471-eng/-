@@ -4386,48 +4386,55 @@ async def handle_radar_signal(update, context):
 async def track_all_drivers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
-    # 1. التحقق من صلاحيات الأدمن (ADMIN_IDS)
-    if user_id not in ADMIN_IDS:
+    # التحقق من المسؤولين الجدد [7513630480, 8563113166]
+    if user_id not in [7513630480, 8563113166]:
         return
 
-    # 2. جلب اتصال باستخدام الدالة التي عرفتها أنت سابقا
     conn = get_db_connection()
     if not conn:
-        await update.message.reply_text("❌ فشل الاتصال بقاعدة البيانات. تأكد من عمل السيرفر.")
+        await update.message.reply_text("⚠️ فشل الاتصال بقاعدة البيانات.")
         return
 
     try:
         with conn.cursor() as cur:
-            # استخدام الاستعلام بناءً على جدول users الظاهر في صورتك
-            query = "SELECT user_id, name, lat, lon FROM users WHERE role = 'driver' AND lat != 0"
-            cur.execute(query)
+            # استخراج السائقين النشطين (lat != 0) بناءً على جدول users
+            cur.execute("SELECT user_id, name, lat, lon FROM users WHERE role = 'driver' AND lat != 0")
             drivers = cur.fetchall()
 
             if not drivers:
-                await update.message.reply_text("📍 لا يوجد سائقين مشاركين للموقع حالياً.")
+                await update.message.reply_text("📍 لا يوجد سائقين مشاركين لمواقعهم حالياً.")
                 return
 
-            response = "🚚 **مواقع السائقين الحالية:**\n\n"
+            header = "🚚 **قائمة مواقع السائقين الحية:**\n\n"
+            current_message = header
+            
             for d_id, d_name, lat, lon in drivers:
-                # التأكد من تحويل الإحداثيات إلى نصوص للرابط
+                # تجهيز نص السائق الواحد
                 map_url = f"https://www.google.com/maps?q={lat},{lon}"
                 tg_link = f"tg://user?id={d_id}"
                 
-                response += (
+                driver_info = (
                     f"👤 **السائق:** {d_name}\n"
                     f"🔗 [تواصل معه]({tg_link})\n"
-                    f"📍 [موقعه على الخريطة]({map_url})\n"
+                    f"📍 [موقعه الحالي]({map_url})\n"
                     f"━━━━━━━━━━━━━━━\n"
                 )
 
-            await update.message.reply_text(response, parse_mode='Markdown', disable_web_page_preview=True)
+                # إذا كانت إضافة هذا السائق ستتجاوز الحد (4000 حرف احتياطاً)
+                if len(current_message) + len(driver_info) > 4000:
+                    # إرسال الجزء الحالي والبدء برسالة جديدة
+                    await update.message.reply_text(current_message, parse_mode='Markdown', disable_web_page_preview=True)
+                    current_message = "🔄 **تابع القائمة:**\n\n" + driver_info
+                else:
+                    current_message += driver_info
+
+            # إرسال الجزء الأخير
+            await update.message.reply_text(current_message, parse_mode='Markdown', disable_web_page_preview=True)
 
     except Exception as e:
-        # هذه السطر سيظهر لك في كونسول Pella لتعرف سبب الفشل الحقيقي
-        print(f"❌ Error in track_all_drivers: {str(e)}") 
-        await update.message.reply_text(f"⚠️ حدث خطأ فني: {str(e)}")
+        print(f"❌ Error: {e}")
+        await update.message.reply_text(f"⚠️ حدث خطأ: {str(e)}")
     finally:
-        # ضروري جداً لإعادة الاتصال للمجمع (Pool)
         release_db_connection(conn)
 
 # ==================== 🌐 5. خادم Flask (للبقاء نشطاً) ====================
