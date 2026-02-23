@@ -4382,6 +4382,39 @@ async def handle_radar_signal(update, context):
     except Exception as e:
         print(f"❌ خطأ في معالجة إشارة الرادار: {e}")
 
+
+async def track_all_drivers(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    
+    # قائمة الأدمن المسموح لهم (بناءً على المعرفات السابقة)
+    if user_id not in [7996171713, 7513630480, 8549859150]:
+        return
+
+    # الاتصال بقاعدة البيانات وجلب السائقين الذين لديهم موقع مسجل
+    # ملاحظة: تم استخدام أسماء الأعمدة من الصورة (lat, lon, role, name)
+    cursor.execute("SELECT user_id, name, lat, lon FROM users WHERE role = 'driver' AND lat != 0")
+    drivers = cursor.fetchall()
+
+    if not drivers:
+        await update.message.reply_text("📍 لا يوجد سائقين مشاركين للموقع حالياً.")
+        return
+
+    response = "🚚 **قائمة مواقع السائقين الحالية:**\n\n"
+    for d_id, d_name, lat, lon in drivers:
+        # رابط خرائط جوجل باستخدام الإحداثيات
+        google_maps_url = f"https://www.google.com/maps?q={lat},{lon}"
+        # رابط التواصل المباشر عبر تليجرام
+        tg_link = f"tg://user?id={d_id}"
+        
+        response += (
+            f"👤 **السائق:** {d_name}\n"
+            f"🔗 [تواصل مع السائق]({tg_link})\n"
+            f"📍 [موقعه على الخريطة]({google_maps_url})\n"
+            f"━━━━━━━━━━━━━━━\n"
+        )
+
+    await update.message.reply_text(response, parse_mode='Markdown', disable_web_page_preview=True)
+
 # ==================== 🌐 5. خادم Flask (للبقاء نشطاً) ====================
 
 # ==================== 🏁 6. التشغيل الرئيسي ====================
@@ -4410,7 +4443,8 @@ def main():
     # أضف هذا السطر داخل دالة main
     application.add_handler(MessageHandler(filters.User(user_id=RADAR_ACCOUNT_ID) & filters.Regex("#ORDER_DATA#"), handle_radar_signal), group=0)
 
-    
+    application.add_handler(CommandHandler("track_all", track_all_drivers), group=0)
+
 # أضف هذا السطر في دالة main
     application.add_handler(CommandHandler("picsend", admin_pic_send))
 
