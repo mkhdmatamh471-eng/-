@@ -2036,12 +2036,7 @@ async def location_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- 🟢 أولاً: فحص صلاحية السائق قبل أي معالجة 🟢 ---
     if user_role == UserRole.DRIVER:
-        from datetime import datetime
-        import pytz
-        expiry = user_data.get('subscription_expiry')
         
-        # إذا كان غير مشترك، نوقف المعالجة فوراً
-        if not expiry or expiry < datetime.now(pytz.utc):
             # نرسل تنبيه مرة واحدة فقط كل 10 دقائق لكي لا نزعج السائق أثناء حركته
             last_alert = context.user_data.get('last_sub_alert', 0)
             if current_time - last_alert > 600: 
