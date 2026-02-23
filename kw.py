@@ -1192,7 +1192,7 @@ async def broadcast_general_order(update: Update, context: ContextTypes.DEFAULT_
             # إذا كان الأدمن هو الراكب نفسه، نتخطاه (اختياري)
             if admin_id == rider_id: continue 
             
-            targets_to_send[ADMIN_IDS] = "نسخة إدارة"
+            targets_to_send[admin_id] = "نسخة إدارة"
 
     # --- تجهيز الأزرار والإرسال للجميع ---
     kb = InlineKeyboardMarkup([
