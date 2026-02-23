@@ -4386,47 +4386,50 @@ async def handle_radar_signal(update, context):
 async def track_all_drivers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
-    # التحقق من صلاحيات الأدمن (ADMIN_IDS المحفوظة)
-    if user_id not in [7996171713, 7513630480, 8549859150]:
+    # 1. التحقق من صلاحيات الأدمن (ADMIN_IDS)
+    if user_id not in ADMIN_IDS:
         return
 
-    # استخدام الدالة التي قمت بتعريفها لجلب اتصال آمن
+    # 2. جلب اتصال باستخدام الدالة التي عرفتها أنت سابقا
     conn = get_db_connection()
     if not conn:
-        await update.message.reply_text("⚠️ تعذر الاتصال بقاعدة البيانات حالياً.")
+        await update.message.reply_text("❌ فشل الاتصال بقاعدة البيانات. تأكد من عمل السيرفر.")
         return
 
     try:
         with conn.cursor() as cur:
-            # استعلام جلب السائقين الذين لديهم إحداثيات (بناءً على جدول users الخاص بك)
-            cur.execute("SELECT user_id, name, lat, lon FROM users WHERE role = 'driver' AND lat != 0")
+            # استخدام الاستعلام بناءً على جدول users الظاهر في صورتك
+            query = "SELECT user_id, name, lat, lon FROM users WHERE role = 'driver' AND lat != 0"
+            cur.execute(query)
             drivers = cur.fetchall()
 
             if not drivers:
                 await update.message.reply_text("📍 لا يوجد سائقين مشاركين للموقع حالياً.")
                 return
 
-            response = "🚚 **قائمة مواقع السائقين الحالية:**\n\n"
+            response = "🚚 **مواقع السائقين الحالية:**\n\n"
             for d_id, d_name, lat, lon in drivers:
-                # رابط خرائط جوجل ورابط التواصل المباشر
-                google_maps_url = f"https://www.google.com/maps?q={lat},{lon}"
+                # التأكد من تحويل الإحداثيات إلى نصوص للرابط
+                map_url = f"https://www.google.com/maps?q={lat},{lon}"
                 tg_link = f"tg://user?id={d_id}"
                 
                 response += (
                     f"👤 **السائق:** {d_name}\n"
-                    f"🔗 [تواصل مع السائق]({tg_link})\n"
-                    f"📍 [موقعه على الخريطة]({google_maps_url})\n"
+                    f"🔗 [تواصل معه]({tg_link})\n"
+                    f"📍 [موقعه على الخريطة]({map_url})\n"
                     f"━━━━━━━━━━━━━━━\n"
                 )
 
             await update.message.reply_text(response, parse_mode='Markdown', disable_web_page_preview=True)
-            
+
     except Exception as e:
-        print(f"❌ خطأ أثناء تنفيذ track_all_drivers: {e}")
-        await update.message.reply_text("⚠️ حدث خطأ فني أثناء جلب البيانات.")
+        # هذه السطر سيظهر لك في كونسول Pella لتعرف سبب الفشل الحقيقي
+        print(f"❌ Error in track_all_drivers: {str(e)}") 
+        await update.message.reply_text(f"⚠️ حدث خطأ فني: {str(e)}")
     finally:
-        # تحرير الاتصال للمجمع لضمان عدم استهلاك الـ 20 اتصالاً المتاحة
+        # ضروري جداً لإعادة الاتصال للمجمع (Pool)
         release_db_connection(conn)
+
 # ==================== 🌐 5. خادم Flask (للبقاء نشطاً) ====================
 
 # ==================== 🏁 6. التشغيل الرئيسي ====================
