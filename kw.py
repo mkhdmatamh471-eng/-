@@ -4386,17 +4386,19 @@ async def handle_radar_signal(update, context):
 async def track_all_drivers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
-    # التحقق من صلاحيات الأدمن (قائمة الـ IDs المحفوظة)
+    # التحقق من صلاحيات الأدمن (ADMIN_IDS المحفوظة)
     if user_id not in [7996171713, 7513630480, 8549859150]:
         return
 
+    # استخدام الدالة التي قمت بتعريفها لجلب اتصال آمن
+    conn = get_db_connection()
+    if not conn:
+        await update.message.reply_text("⚠️ تعذر الاتصال بقاعدة البيانات حالياً.")
+        return
+
     try:
-        # 1. يجب إنشاء اتصال جديد أو استخدام الاتصال العالمي (Global Connection)
-        # سأفترض أن لديك متغير conn للاتصال، سننشئ منه cursor
-        from kw import conn # استبدل kw باسم ملفك إذا كان مختلفاً لاستدعاء الاتصال
-        
         with conn.cursor() as cur:
-            # 2. تنفيذ الاستعلام بناءً على أعمدة جدول users الظاهرة في الصورة
+            # استعلام جلب السائقين الذين لديهم إحداثيات (بناءً على جدول users الخاص بك)
             cur.execute("SELECT user_id, name, lat, lon FROM users WHERE role = 'driver' AND lat != 0")
             drivers = cur.fetchall()
 
@@ -4406,9 +4408,8 @@ async def track_all_drivers(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             response = "🚚 **قائمة مواقع السائقين الحالية:**\n\n"
             for d_id, d_name, lat, lon in drivers:
-                # رابط خرائط جوجل
+                # رابط خرائط جوجل ورابط التواصل المباشر
                 google_maps_url = f"https://www.google.com/maps?q={lat},{lon}"
-                # رابط تليجرام للتواصل
                 tg_link = f"tg://user?id={d_id}"
                 
                 response += (
@@ -4421,10 +4422,11 @@ async def track_all_drivers(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(response, parse_mode='Markdown', disable_web_page_preview=True)
             
     except Exception as e:
-        # طباعة الخطأ في كونسول Pella لتسهيل التشخيص
-        print(f"❌ خطأ في قاعدة البيانات: {e}")
-        await update.message.reply_text("⚠️ حدث خطأ أثناء جلب البيانات من السيرفر.")
-
+        print(f"❌ خطأ أثناء تنفيذ track_all_drivers: {e}")
+        await update.message.reply_text("⚠️ حدث خطأ فني أثناء جلب البيانات.")
+    finally:
+        # تحرير الاتصال للمجمع لضمان عدم استهلاك الـ 20 اتصالاً المتاحة
+        release_db_connection(conn)
 # ==================== 🌐 5. خادم Flask (للبقاء نشطاً) ====================
 
 # ==================== 🏁 6. التشغيل الرئيسي ====================
