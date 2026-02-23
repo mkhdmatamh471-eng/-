@@ -1154,9 +1154,7 @@ async def broadcast_general_order(update: Update, context: ContextTypes.DEFAULT_
     await sync_all_users()
 
     # 🟢 جلب الوقت الحالي لتفادي الخطأ
-    from datetime import datetime
-    import pytz
-    now = datetime.now(pytz.utc) 
+    
 
     # 1. إنشاء قاموس لجمع المستهدفين (المعرف: المسافة) لمنع التكرار
     targets_to_send = {}
@@ -1174,9 +1172,7 @@ async def broadcast_general_order(update: Update, context: ContextTypes.DEFAULT_
             continue
 
         # 3. منع السائقين غير المشتركين
-        expiry = d.get('subscription_expiry')
-        if not expiry or expiry < now:
-            continue
+        
 
         dist = get_distance(r_lat, r_lon, d['lat'], d['lon'])
 
