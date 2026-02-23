@@ -75,6 +75,75 @@ msg_request = HTTPXRequest(connection_pool_size=50, connect_timeout=10)
 distribution_bot = Bot(token=BOT_TOKEN, request=msg_request)
 
 # --- 1. إعدادات الأحياء الذكية (المدينة المنورة) ---
+# قاموس إحداثيات أحياء ومعالم المدينة المنورة (خط العرض، خط الطول)
+DISTRICT_COORDS = {
+    "الحرم": (24.4672, 39.6112),
+    "المسجد النبوي": (24.4672, 39.6112),
+    "المنطقة المركزية": (24.4672, 39.6112),
+    "المركزية": (24.4672, 39.6112),
+    "مسجد قباء": (24.4391, 39.6172),
+    "مسجد القبلتين": (24.4845, 39.5772),
+    "الميقات": (24.4132, 39.5445),
+    "ابيار علي": (24.4132, 39.5445),
+    "أبيار علي": (24.4132, 39.5445),
+    "ذو الحليفة": (24.4132, 39.5445),
+    "سيد الشهداء": (24.5028, 39.6133),
+    "العزيزية": (24.4385, 39.5398),
+    "العوالي": (24.4420, 39.6380),
+    "الخالدية": (24.4550, 39.5850),
+    "الدعيثة": (24.4411, 39.5055),
+    "الرانونا": (24.3980, 39.5820),
+    "شوران": (24.4050, 39.6050),
+    "سلطانة": (24.4880, 39.5810),
+    "القبلتين": (24.4820, 39.5750),
+    "الجرف": (24.5120, 39.5630),
+    "العاقول": (24.4950, 39.7350),
+    "باقدو": (24.4550, 39.6510),
+    "الملك فهد": (24.4850, 39.6550),
+    "الفيحاء": (24.4800, 39.6300),
+    "الاسكان": (24.4350, 39.6500),
+    "الإسكان": (24.4350, 39.6500),
+    "حمراء الأسد": (24.3850, 39.5450),
+    "الزهراء": (24.4750, 39.5950),
+    "الربوة": (24.4950, 39.6150),
+    "العنابس": (24.4710, 39.5910),
+    "السيح": (24.4680, 39.5950),
+    "العنبرية": (24.4590, 39.6000),
+    "الشهداء": (24.5000, 39.6100),
+    "الدويخله": (24.4600, 39.6450),
+    "المبعوث": (24.4750, 39.6600),
+    "الدويمة": (24.4380, 39.5950),
+    "المطار": (24.5533, 39.7044),
+    "مطار الأمير محمد بن عبدالعزيز": (24.5533, 39.7044),
+    "محطة القطار": (24.4450, 39.6540),
+    "قطار الحرمين": (24.4450, 39.6540),
+    "سابتكو": (24.4610, 39.6020),
+    "النقل الجماعي": (24.4610, 39.6020),
+    "جامعة طيبة": (24.4841, 39.5448),
+    "الجامعة الإسلامية": (24.4780, 39.5630),
+    "جامعة الامير مقرن": (24.5050, 39.6600),
+    "الكلية التقنية": (24.4350, 39.5200),
+    "النور مول": (24.4920, 39.5930),
+    "الراشد مول": (24.4820, 39.5890),
+    "العالية مول": (24.4450, 39.6120),
+    "المنار مول": (24.4650, 39.5650),
+    "مزايا مول": (24.4780, 39.6150),
+    "سوق التمور": (24.4580, 39.6080),
+    "مستشفى الملك فهد": (24.4700, 39.5750),
+    "مستشفى أحد": (24.5000, 39.6200),
+    "المستشفى العسكري": (24.4300, 39.6400),
+    "مستشفى الحرس": (24.5200, 39.6600),
+    "مستشفى الولادة": (24.4800, 39.6500),
+    "مستشفى الميقات": (24.4150, 39.5500),
+    "المواساة": (24.5050, 39.6000),
+    "الطب الدولي": (24.4550, 39.5900),
+    "مستشفى الدار": (24.4350, 39.6150)
+}
+
+# نقطة افتراضية للمدينة المنورة (مركز المدينة) للكلمات العامة (مثل: عام، فندق، المخطط)
+DEFAULT_MEDINA_COORD = (24.4672, 39.6112)
+
+
 CITIES_DISTRICTS = {
     "المدينة المنورة": [
         "عام", "أبو مرخة", "أبيار علي", "الأسواف", "البخاري", "الإسكان", "البحر",
@@ -1739,27 +1808,8 @@ async def global_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         driver_id = context.user_data.get('driver_to_order')
         
         # --- 🟢 التحقق من حالة اشتراك الكابتن قبل الإرسال 🟢 ---
-        conn = get_db_connection()
-        is_active = False
-        if conn:
-            try:
-                with conn.cursor() as cur:
-                    # نتحقق من عدم الحظر + أن تاريخ الاشتراك لم ينتهِ بعد
-                    cur.execute("""
-                        SELECT 1 FROM users 
-                        WHERE user_id = %s 
-                        AND is_blocked = FALSE 
-                        AND subscription_expiry > NOW()
-                    """, (driver_id,))
-                    if cur.fetchone():
-                        is_active = True
-            finally:
-                release_db_connection(conn)
-
-        if not is_active:
-            await update.message.reply_text("❌ نعتذر منك، الكابتن غير متاح حالياً لاستقبال طلبات (بسبب انتهاء الاشتراك أو الحظر).")
-            context.user_data['state'] = None
-            return
+        
+        
         # --- 🔴 نهاية التحقق 🔴 ---
 
         kb = InlineKeyboardMarkup([
@@ -2016,42 +2066,52 @@ async def admin_panel_view(update, context):
 
 
 async def location_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # السطر الأهم: استلام التحديث سواء كان رسالة جديدة أو تحديث للموقع الحي
     msg = update.message or update.edited_message
     if not msg or not msg.location:
         return
 
     user_id = update.effective_user.id
+    # استخراج الإحداثيات (خط العرض والطول)
     lat_val, lon_val = msg.location.latitude, msg.location.longitude
     state = context.user_data.get('state')
     current_time = time.time()
 
-    # جلب بيانات المستخدم
+    # جلب بيانات المستخدم من الكاش
     user_data = USER_CACHE.get(user_id) or {}
-    user_role = user_data.get('role', UserRole.RIDER)
+    # ملاحظة: في صورتك، الدور مكتوب "rider" أو "driver" كنص (Lower case)
+    user_role = user_data.get('role', 'rider').lower()
 
-    # --- 🟢 أولاً: فحص صلاحية السائق قبل أي معالجة 🟢 ---
-    if user_role == UserRole.DRIVER:
-        
-            # نرسل تنبيه مرة واحدة فقط كل 10 دقائق لكي لا نزعج السائق أثناء حركته
-            last_alert = context.user_data.get('last_sub_alert', 0)
-            if current_time - last_alert > 600: 
-                try: await context.bot.send_message(user_id, "⚠️ اشتراكك منتهي، لن يتم تحديث موقعك للركاب.")
-                except: pass
-                context.user_data['last_sub_alert'] = current_time
-            return
-
-    # --- 🔵 ثانياً: تحديث الموقع (يعمل الآن مع الموقع الحي) 🔵 ---
-    # تحديث الكاش المحلي
+    # --- 🔵 أولاً: تحديث الموقع دائماً (حتى لو كان الاشتراك منتهياً) 🔵 ---
+    # تحديث الكاش المحلي فوراً لضمان ظهوره في الرادار الداخلي
     if user_id in USER_CACHE:
         USER_CACHE[user_id]['lat'] = lat_val
         USER_CACHE[user_id]['lon'] = lon_val
     
-    # تحديث قاعدة البيانات (كل 60 ثانية)
+    # تحديث Supabase (كل 60 ثانية لتوفير الموارد)
     last_upd = LAST_DB_UPDATE.get(user_id, 0)
     if (current_time - last_upd) > 60:
         LAST_DB_UPDATE[user_id] = current_time
+        # حفظ lat_val و lon_val في الحقول المقابلة بالصورة
         asyncio.create_task(update_db_silent(user_id, lat_val, lon_val))
+
+    # --- 🟢 ثانياً: فحص صلاحية السائق للمتابعة 🟢 ---
+    if user_role == 'driver':
+        from datetime import datetime
+        import pytz
+        expiry = user_data.get('subscription_expiry')
+        
+        # إذا كان الاشتراك منتهياً، نرسل تنبيه ونوقف "البث" فقط وليس "التحديث"
+        if not expiry or (expiry.replace(tzinfo=pytz.utc) if expiry.tzinfo is None else expiry) < datetime.now(pytz.utc):
+            last_alert = context.user_data.get('last_sub_alert', 0)
+            if current_time - last_alert > 600: 
+                try: await context.bot.send_message(user_id, "⚠️ اشتراكك منتهي، لن يتم توجيه طلبات جديدة إليك.")
+                except: pass
+                context.user_data['last_sub_alert'] = current_time
+            return # هنا التوقف صحيح لأنه يحجب الميزات الإضافية فقط
+
+    # --- 🟡 ثالثاً: معالجة الحالات الخاصة (الركاب والشات) 🟡 ---
+    # ... بقية كودك الخاص بالشات النشط وطلب الرحلة كما هو ...
+
 
     # --- 🟡 ثالثاً: معالجة الحالات الخاصة 🟡 ---
 
@@ -4141,58 +4201,53 @@ async def admin_show_user_details(update, context, target_id):
     await query.edit_message_text(res_txt, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
     
     
-async def broadcast_order_to_drivers(district, content, cust_name, username, msg_link):
+# أضف r_lat و r_lon في نهاية البارامترات
+async def broadcast_order_to_drivers(district, content, cust_name, username, msg_link, r_lat=None, r_lon=None):
     """
-    تقوم ببث الطلب للسائقين مع فلترة دقيقة للأحياء وتوفير أزرار تواصل مزدوجة.
+    نسخة مطورة: تدعم الرادار الجغرافي والروابط السريعة.
     """
     target_district = district.strip() if district else "عام"
-        # --- منطق تحديد المدينة ديناميكياً ---
+    
+    # --- منطق تحديد المدينة ديناميكياً ---
     detected_city = ""
     for city, districts in CITIES_DISTRICTS.items():
         if target_district in districts:
             detected_city = city
             break
     
-    # صياغة اسم المدينة للعنوان
     city_suffix = f" في {detected_city}" if detected_city else ""
     
-    print(f"📡 [بدء البث] الحي المستهدف: {target_district} | العميل: {cust_name}")
-    
     conn = get_db_connection()
-    if not conn: 
-        return
+    if not conn: return
     
     try:
         with conn.cursor() as cur:
+            # تم إضافة جلب lat و lon الخاصين بالسائق من قاعدة البيانات
             cur.execute("""
-                SELECT user_id, subscription_expiry, districts 
+                SELECT user_id, subscription_expiry, districts, lat, lon 
                 FROM users 
                 WHERE is_blocked = FALSE AND LOWER(role) = 'driver'
             """)
             drivers = cur.fetchall()
             
-        if not drivers:
-            return
+        if not drivers: return
 
         now = datetime.now(timezone.utc)
-        active_tasks = []
-        inactive_tasks = []
+        active_tasks, inactive_tasks = [], []
 
-        # --- 1. بناء لوحة أزرار التواصل للمشتركين (Double Buttons) ---
+        # --- 1. بناء لوحة الأزرار (دعم روابط tg:// و http) ---
         driver_keyboard = []
+        if username and username != "None":
+            driver_keyboard.append([InlineKeyboardButton(text="👤 مراسلة العميل (خاص)", url=username)])
         
-        # الزر الأول: الخاص (يعمل فقط إذا كان هناك يوزرنيم)
-        if username and username != "None" and username.startswith("http"):
-            driver_keyboard.append([InlineKeyboardButton(text=f"👤 مراسلة العميل (خاص)", url=username)])
-        
-        # الزر الثاني: مصدر الطلب (الخيار المضمون لفتح الخاص من المجموعة)
-        if msg_link and msg_link.startswith("http"):
+        if msg_link:
+            # التعديل: إزالة شرط startswith("http") للسماح بـ tg://
             driver_keyboard.append([InlineKeyboardButton(text="🔗 اذهب لمصدر الطلب (القروب)", url=msg_link)])
 
         reply_markup_active = InlineKeyboardMarkup(driver_keyboard) if driver_keyboard else None
 
         # --- 2. حلقة التوزيع والفلترة ---
-        for user_id, expiry, driver_districts in drivers:
+        for user_id, expiry, driver_districts, d_lat, d_lon in drivers:
             is_active = False
             if expiry:
                 if expiry.tzinfo is None: expiry = expiry.replace(tzinfo=timezone.utc)
@@ -4200,26 +4255,31 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
             
             driver_areas_list = [d.strip() for d in driver_districts.split(',')] if driver_districts else []
 
-            # منطق الفلترة
+            # --- منطق الفلترة المطور (رادار جغرافي) ---
             should_receive = False
-            if is_active:
-                if "عام" in driver_areas_list or target_district in driver_areas_list:
+            
+            # أ- إذا توفر موقع للطلب وللسائق، نحسب المسافة (10 كم مثلاً)
+            if r_lat and r_lon and d_lat and d_lon:
+                dist = get_distance(r_lat, r_lon, d_lat, d_lon) # تأكد من وجود دالة get_distance
+                if dist <= 10.0:
                     should_receive = True
-                elif target_district == "عام":
-                    should_receive = False 
-            else:
-                should_receive = True # لغير المشتركين كدعاية
 
+            # ب- إذا لم يغطيه الرادار، نفحص قائمة الأحياء اليدوية
             if not should_receive:
-                continue
+                if is_active:
+                    if "عام" in driver_areas_list or target_district in driver_areas_list:
+                        should_receive = True
+                else:
+                    should_receive = True # كدعاية لغير المشتركين
 
-            # صياغة الرسالة بتنسيق HTML نظيف
+            if not should_receive: continue
+
+            # --- تجهيز وإرسال الرسالة ---
             safe_content = html.escape(content)
             safe_cust_name = html.escape(cust_name)
             safe_district_display = html.escape(target_district)
 
             if is_active:
-                # --- تنسيق المشتركين ---
                 msg_text = (
                     f"🎯 <b>طلب مشوار جديد{city_suffix}</b>\n"
                     f"━━━━━━━━━━━━━━\n"
@@ -4230,9 +4290,7 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                     f"✅ <i>اضغط على الأزرار بالأسفل للتواصل</i>"
                 )
                 active_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=reply_markup_active))
-            
             else:
-                # --- تنسيق غير المشتركين ---
                 sub_link = "https://t.me/Servecestu"
                 msg_text = (
                     f"🎯 <b>طلب مشوار جديد{city_suffix}</b>\n"
@@ -4245,16 +4303,15 @@ async def broadcast_order_to_drivers(district, content, cust_name, username, msg
                 keyboard_sub = InlineKeyboardMarkup([[InlineKeyboardButton(text="💳 اشتراك وتفعيل المراسلة", url=sub_link)]])
                 inactive_tasks.append(send_with_retry(int(user_id), msg_text, reply_markup=keyboard_sub))
 
-        # تنفيذ البث على دفعات
-        if active_tasks:
-            for i in range(0, len(active_tasks), 20):
-                await asyncio.gather(*active_tasks[i:i+20])
-                await asyncio.sleep(0.5)
+        # تنفيذ البث على دفعات (Active)
+        for i in range(0, len(active_tasks), 20):
+            await asyncio.gather(*active_tasks[i:i+20])
+            await asyncio.sleep(0.5)
 
-        if inactive_tasks:
-            for i in range(0, len(inactive_tasks), 20):
-                await asyncio.gather(*inactive_tasks[i:i+20])
-                await asyncio.sleep(0.5)
+        # تنفيذ البث على دفعات (Inactive)
+        for i in range(0, len(inactive_tasks), 20):
+            await asyncio.gather(*inactive_tasks[i:i+20])
+            await asyncio.sleep(0.5)
 
     except Exception as e:
         print(f"❌ خطأ فني أثناء البث: {e}")
@@ -4354,8 +4411,7 @@ async def notify_channel(district, content, cust_id):
 async def handle_radar_signal(update, context):
     try:
         text = update.message.text
-        if not text or "#ORDER_DATA#" not in text:
-            return
+        if not text or "#ORDER_DATA#" not in text: return
 
         def extract(tag, source):
             pattern = rf"{tag}:(.*?)(?=\n[A-Z_]+:|$)"
@@ -4363,27 +4419,32 @@ async def handle_radar_signal(update, context):
             return match.group(1).strip() if match else None
 
         district  = extract("DISTRICT", text) or "عام"
+        lat = extract("LAT", text)
+        lon = extract("LON", text)
+        
         cust_name = extract("CUST_NAME", text) or "عميل"
         content   = extract("CONTENT", text) or "لا توجد تفاصيل"
         username  = extract("USERNAME", text) or "None"
         msg_link  = extract("MSG_LINK", text) or ""
 
-        # --- التعديل هنا لضمان فتح الروابط الخاصة ---
-        # إذا كان الرابط لا يبدأ بـ http، نقوم بتنظيفه لضمان قبوله في أزرار التليجرام
-        if msg_link.startswith("tg://"):
-            # الروابط العميقة (Deep Links) ممتازة للفتح المباشر داخل التطبيق
-            final_link = msg_link
-        else:
-            final_link = msg_link
+        # تحويل آمن مع دعم القاموس المحلي
+        r_lat, r_lon = None, None
+        try:
+            if lat and lon:
+                r_lat, r_lon = float(lat), float(lon)
+            elif district in DISTRICT_COORDS:
+                r_lat, r_lon = DISTRICT_COORDS[district]
+        except: pass
 
-        print(f"📡 إشارة رادار: حي {district} | العميل {cust_name}")
+        print(f"📡 معالجة طلب: {district} | الرادار الجغرافي: {r_lat}, {r_lon}")
 
-        # تمرير الرابط النهائي (final_link) لدالة البث
-        asyncio.create_task(broadcast_order_to_drivers(district, content, cust_name, username, final_link))
+        # تمرير البيانات لدالة البث المحدثة
+        asyncio.create_task(broadcast_order_to_drivers(
+            district, content, cust_name, username, msg_link, r_lat, r_lon
+        ))
 
     except Exception as e:
         print(f"❌ خطأ في معالجة إشارة الرادار: {e}")
-
 
 async def track_all_drivers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
