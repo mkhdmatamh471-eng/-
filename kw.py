@@ -175,6 +175,8 @@ DISTRICT_COORDS = {
 # منطق استخراج الإحداثيات داخل دالة القناص
 DEFAULT_COORD = (24.4672, 39.6112) # مركز المدينة الافتراضي
 
+
+
 CITIES_DISTRICTS = {
     "المدينة المنورة": [
         "عام", "أبو مرخة", "أبيار علي", "الأسواف", "البخاري", "الإسكان", "البحر",
@@ -4127,68 +4129,71 @@ async def admin_list_users(update, context, page=0):
 
 # 3. أمر إرسال صورة ونص للسائقين (للمسؤولين فقط)
 # ==============================================================================
+logger = logging.getLogger(__name__)
+
 async def admin_pic_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
-    # 1. التحقق من أن المستخدم آدمن
+    # 1. التحقق من الآدمن (تأكد من تطابق IDs)
     if user_id not in ADMIN_IDS:
         await update.message.reply_text("❌ هذا الأمر مخصص للمسؤولين فقط.")
         return
 
-    # 2. التحقق من وجود صورة في الرسالة
+    # 2. التحقق من وجود صورة (التعامل مع الوصف)
     if not update.message.photo:
-        await update.message.reply_text("💡 **طريقة الاستخدام:**\nأرسل صورة وضع في الوصف (Caption) الأمر `/picsend` متبوعاً بالنص الذي تريده.")
+        await update.message.reply_text("💡 أرسل الصورة وضع في الوصف `/picsend` مع النص.")
         return
 
-    # 3. استخراج معرف الصورة والنص
     photo_file_id = update.message.photo[-1].file_id
-    raw_caption = update.message.caption if update.message.caption else ""
-    # تنظيف النص من كلمة الأمر
-    final_text = raw_caption.replace("/picsend", "").strip()
+    # الحصول على الوصف بشكل آمن
+    caption = update.message.caption if update.message.caption else ""
+    
+    # تنظيف النص: إزالة الأمر /picsend من البداية
+    import re
+    final_text = re.sub(r'^/picsend\s*', '', caption)
 
-    # 4. جلب معرفات السائقين من قاعدة البيانات مباشرة
+    # 3. جلب السائقين
     drivers_to_send = []
     conn = get_db_connection()
     if conn:
         try:
             with conn.cursor() as cur:
-                # جلب كل المستخدمين الذين دورهم سائق
-                cur.execute("SELECT user_id FROM users WHERE role = %s", (UserRole.DRIVER.value,))
+                # تأكد أن 'driver' مكتوبة كما هي في قاعدة بياناتك
+                cur.execute("SELECT user_id FROM users WHERE role = %s", ('driver',)) 
                 rows = cur.fetchall()
                 drivers_to_send = [row[0] for row in rows]
         except Exception as e:
-            logger.error(f"Error fetching drivers for picsend: {e}")
+            logger.error(f"DB Error: {e}")
         finally:
             release_db_connection(conn)
 
     if not drivers_to_send:
-        await update.message.reply_text("⚠️ لا يوجد سائقين مسجلين في قاعدة البيانات.")
+        await update.message.reply_text("⚠️ لم يتم العثور على سائقين في قاعدة البيانات.")
         return
 
-    status_msg = await update.message.reply_text(f"⏳ جاري الإرسال الجماعي إلى {len(drivers_to_send)} كابتن...")
+    status_msg = await update.message.reply_text(f"⏳ جاري الإرسال إلى {len(drivers_to_send)} سائق...")
 
     success = 0
     failed = 0
 
-    # 5. حلقة الإرسال مع معالجة الأخطاء (لتجنب توقف البوت إذا حظر أحدهم البوت)
     for d_id in drivers_to_send:
         try:
             await context.bot.send_photo(
                 chat_id=d_id,
                 photo=photo_file_id,
                 caption=final_text,
-                parse_mode="Markdown"
+                parse_mode=None # قمنا بتعطيل Markdown مؤقتاً لتجنب أخطاء الرموز
             )
             success += 1
-            # تأخير بسيط جداً لمنع الـ Flood من تليجرام عند الإرسال لعدد كبير
             await asyncio.sleep(0.05) 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to send to {d_id}: {e}")
             failed += 1
 
     await status_msg.edit_text(
-        f"✅ **اكتمل الإرسال الجماعي للكباتن**\n\n"
-        f"🟢 تم بنجاح: {success}\n"
-        f"🔴 فشل (بوت محظور): {failed}"
+        f"✅ **اكتمل الإرسال**\n"
+        f"🟢 نجاح: {success}\n"
+        f"🔴 فشل: {failed}"
     )
 
 
@@ -4562,7 +4567,9 @@ def main():
     application.add_handler(CommandHandler("track_all", track_all_drivers), group=0)
 
 # أضف هذا السطر في دالة main
-    application.add_handler(CommandHandler("picsend", admin_pic_send))
+    # بدلاً من CommandHandler استخدم MessageHandler للبحث عن الصور التي تحتوي على نص /picsend
+application.add_handler(MessageHandler(filters.PHOTO & filters.Regex(r"^/picsend"), admin_pic_send), group=0)
+
 
 
 
