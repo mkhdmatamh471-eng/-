@@ -4568,7 +4568,7 @@ def main():
 
 # أضف هذا السطر في دالة main
     # بدلاً من CommandHandler استخدم MessageHandler للبحث عن الصور التي تحتوي على نص /picsend
-application.add_handler(MessageHandler(filters.PHOTO & filters.Regex(r"^/picsend"), admin_pic_send), group=0)
+    application.add_handler(MessageHandler(filters.PHOTO & filters.Regex(r"^/picsend"), admin_pic_send), group=0)
 
 
 
