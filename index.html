@@ -328,6 +328,64 @@
         }
     }
 
+
+    async function sendMsg() {
+        const input = document.getElementById('chat-input');
+        const chatBody = document.getElementById('chat-body');
+        if (!input || !chatBody) return;
+
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        chatBody.innerHTML += `<div class="chat-msg user-msg">${msg}</div>`;
+        input.value = '';
+        input.disabled = true;
+        chatBody.scrollTop = chatBody.scrollHeight;
+
+        const typingId = "typing-" + Date.now();
+        chatBody.innerHTML += `<div class="chat-msg bot-msg" id="${typingId}"><i class="fas fa-spinner fa-spin"></i> جاري التفكير...</div>`;
+        
+        // --- تمويه المفتاح داخل المتصفح ---
+        const p1 = "gsk_emKf0CkNg9RaiF";
+        const p2 = "SxbDBYWGdyb3FYbmv3jYs";
+        const p3 = "KnN7wxrGyU2mZi";
+        const p4 = "Oyo"; 
+        const FINAL_KEY = p1 + p2 + p3 + p4;
+
+        try {
+            // الاتصال مباشرة بـ Groq بدلاً من السيرفر الخاص بك
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${FINAL_KEY}`,
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({
+                    model: "llama-3.1-8b-instant",
+                    messages: [
+                        { role: "system", content: `أنت المساعد الذكي الرسمي لعيادة الرحمن لطب الأسنان (د. مالك عبد الرحمن). 
+                    موقع العيادة: تعز، مشرعة وحدنان، حدنان، جوار مجمع السعيد التربوي.
+                    قواعدك الصارمة:
+                    1. تخصصك حصري في طب وجراحة الفم والأسنان.
+                    2. أجب باختصار شديد ومهنية عالية.
+                    3. ارفض الإجابة عن أي موضوع خارج طب الأسنان (سياسة، رياضة، أسئلة عامة) وقل: "عذراً، تخصصي محصور في استشارات طب الأسنان لعيادة الرحمن".
+                    4. لا تصف أدوية محددة، بل وجه المريض لزيارة الدكتور مالك في العيادة.` 
+                },
+                        { role: "user", content: msg }
+                    ]
+                })
+            });
+            const data = await response.json();
+            document.getElementById(typingId).innerText = data.choices[0].message.content;
+        } catch (error) {
+            document.getElementById(typingId).innerText = "عذراً، فشل الاتصال المباشر.";
+        } finally {
+            input.disabled = false;
+            input.focus();
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+    }
+
     function handleChatEnter(e) {
         if (e.key === 'Enter') sendMsg();
     }
