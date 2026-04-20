@@ -390,42 +390,7 @@
         if (e.key === 'Enter') sendMsg();
     }
 
-    async function sendMsg() {
-        const input = document.getElementById('chat-input');
-        const chatBody = document.getElementById('chat-body');
-        if (!input || !chatBody) return;
-
-        const msg = input.value.trim();
-        if (!msg) return;
-
-        // إضافة رسالة المستخدم
-        chatBody.innerHTML += `<div class="chat-msg user-msg">${msg}</div>`;
-        input.value = '';
-        input.disabled = true;
-        chatBody.scrollTop = chatBody.scrollHeight;
-
-        // حالة جاري التفكير
-        const typingId = "typing-" + Date.now();
-        chatBody.innerHTML += `<div class="chat-msg bot-msg" id="${typingId}"><i class="fas fa-spinner fa-spin"></i> جاري التفكير...</div>`;
-        chatBody.scrollTop = chatBody.scrollHeight;
-
-        try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: msg })
-            });
-            const data = await response.json();
-            document.getElementById(typingId).innerText = data.reply;
-        } catch (error) {
-            document.getElementById(typingId).innerText = "عذراً، فشل الاتصال بالسيرفر. يرجى المحاولة لاحقاً.";
-        } finally {
-            input.disabled = false;
-            input.focus();
-            chatBody.scrollTop = chatBody.scrollHeight;
-        }
-    }
-
+    
     // 4. نظام الحجز المطور: التكامل مع واتساب
     const dateInput = document.getElementById('date');
     if (dateInput) {
