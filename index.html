@@ -1264,76 +1264,121 @@ function sendEmergencySOS() {
     }
 
         // 4. نظام الحجز المطور: التكامل مع واتساب
-    const bookingForm = document.getElementById('bookingForm');
-    if (bookingForm) {
-        bookingForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const btn = this.querySelector('button');
-            const msgDiv = document.getElementById('response-msg');
-            
-            // استخراج بيانات الحجز الأساسية
-            const name = document.getElementById('name').value;
-            const phone = document.getElementById('phone').value;
-            const date = document.getElementById('date').value;
-            const time = document.getElementById('time').value;
-            const period = document.getElementById('period').value;
-            const service = document.getElementById('service').value;
-            
-            // استخراج بيانات السجل الطبي
-            const chronic = document.getElementById('chronic-diseases').value;
-            const allergy = document.getElementById('allergy').value;
+    // 4. نظام الحجز المطور: التكامل مع واتساب
+const bookingForm = document.getElementById('bookingForm');
+if (bookingForm) {
+    bookingForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const btn = this.querySelector('button');
+        const msgDiv = document.getElementById('response-msg');
+        const imageInput = document.getElementById('patient-image');
+        
+        // استخراج البيانات
+        const name = document.getElementById('name').value;
+        const phone = document.getElementById('phone').value;
+        const date = document.getElementById('date').value;
+        const time = document.getElementById('time').value;
+        const service = document.getElementById('service').value;
 
-            // التحقق من وجود صورة
-            const imageInput = document.getElementById('patient-image');
-            const hasImage = (imageInput && imageInput.files.length > 0) ? "%0A📸 *ملاحظة:* سأقوم بإرسال صورة الحالة الآن." : "";
+        // التحقق مما إذا كان المريض أرفق صورة
+        let imageNotice = "";
+        if (imageInput && imageInput.files.length > 0) {
+            // تنبيه للمريض في صفحة العيادة قبل التحويل
+            imageNotice = "%0A%0A⚠️ *ملاحظة:* يرجى إرفاق الصورة من الاستوديو بعد فتح المحادثة مباشرة.";
+        }
 
-            // تحديد مستوى الخطورة بناءً على المساعد الذكي
-            const riskText = (selectedSymptoms.length > 2) ? "⚠️ حالة عاجلة" : "حالة عادية";
-            const symptomsList = selectedSymptoms.length > 0 ? selectedSymptoms.join(' + ') : "لم يتم تحديد أعراض";
-            const jawArea = selectedJaw ? selectedJaw : "غير محدد";
+        const message = 
+            `*طلب حجز ذكي - عيادة الرَّحْمَٰن* %0A` +
+            `--------------------------%0A` +
+            `*المريض:* ${name}%0A` +
+            `*الهاتف:* ${phone}%0A` +
+            `*الخدمة:* ${service}%0A` +
+            `*الموعد:* ${date} - ${time}%0A` +
+            `--------------------------%0A` +
+            `*الأعراض:* ${selectedSymptoms.join(' + ') || 'فحص عام'}%0A` +
+            `*الأسنان:* ${selectedTeeth.join('، ') || 'غير محدد'}%0A` +
+            imageNotice;
 
-            // بناء نص الرسالة
-            const message = 
-                `*طلب حجز ذكي - عيادة الرَّحْمَٰن* %0A` +
-                `--------------------------%0A` +
-                `*المريض:* ${name}%0A` +
-                `*الهاتف:* ${phone}%0A` +
-                `*تقييم الحالة:* ${riskText}%0A` +
-                `--------------------------%0A` +
-                `*الخدمة:* ${service}%0A` +
-                `*مكان الألم:* ${jawArea}%0A` +
-                `*الأعراض:* ${symptomsList}%0A` +
-                `*التاريخ الطبي:* ${chronic} | ${allergy}%0A` +
-                `--------------------------%0A` +
-                `*الموعد:* ${date} - الساعة: ${time} (${period})%0A` +
-                hasImage;
+const bookingData = {
+    name: name,
+    phone: phone,
+    date: date,
+    time: time,
+    service: service,
+    timestamp: new Date().toLocaleString()
+};
+saveBookingLocal(bookingData); // هذا السطر يرسل الحجز للنافذة الخاصة
 
-            const whatsappNumber = "967771134103";
-            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+        const whatsappNumber = "967771134103";
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
 
+        if (btn) {
+            btn.innerText = "جاري التحويل...";
+            btn.disabled = true;
+        }
+
+        // إظهار رسالة إرشادية للمريض
+        if (msgDiv) {
+            msgDiv.style.color = "#d4a017"; // لون تنبيهي
+            msgDiv.innerHTML = imageInput.files.length > 0 
+                ? `<i class="fas fa-info-circle"></i> سيفتح واتساب الآن.. <b>تذكر إرفاق الصورة</b> من مشبك الورق 📎`
+                : `<i class="fas fa-spinner fa-spin"></i> جاري فتح واتساب...`;
+        }
+
+        setTimeout(() => {
+            window.open(whatsappUrl, '_blank');
             if (btn) {
-                btn.innerText = "جاري التحويل...";
-                btn.disabled = true;
+                btn.innerText = "تأكيد الحجز المبدئي";
+                btn.disabled = false;
             }
-            if (msgDiv) {
-                msgDiv.style.color = "var(--main-dark)";
-                msgDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري فتح واتساب...`;
-            }
+        }, 2000); // زيادة الوقت قليلاً ليقرأ المريض التنبيه
+    });
+}
 
-            setTimeout(() => {
-                window.open(whatsappUrl, '_blank');
-                if (btn) {
-                    btn.innerText = "تأكيد الحجز المبدئي";
-                    btn.disabled = false;
-                }
-                if (msgDiv) {
-                    msgDiv.style.color = "green";
-                    msgDiv.innerHTML = `<i class="fas fa-check-circle"></i> تم التحويل!`;
-                }
-            }, 1000);
-        });
+// تعديل بسيط على كود الحجز السابق لإضافة ميزة الحفظ
+function saveBookingLocal(bookingData) {
+    let bookings = JSON.parse(localStorage.getItem('clinic_bookings') || '[]');
+    bookings.push(bookingData);
+    localStorage.setItem('clinic_bookings', JSON.stringify(bookings));
+}
+
+// وظائف لوحة التحكم
+function openAdminPanel() {
+    document.getElementById('admin-panel').style.display = 'block';
+}
+
+function closeAdminPanel() {
+    document.getElementById('admin-panel').style.display = 'none';
+}
+
+function checkAdminPass() {
+    const pass = document.getElementById('admin-pass').value;
+    if(pass === "1234") { // يمكنك تغيير الرمز هنا
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('bookings-list').style.display = 'block';
+        displayBookings();
+    } else {
+        alert("رمز الدخول خاطئ!");
     }
+}
+
+function displayBookings() {
+    const bookings = JSON.parse(localStorage.getItem('clinic_bookings') || '[]');
+    const tableBody = document.getElementById('bookings-table-body');
+    tableBody.innerHTML = '';
+
+    bookings.reverse().forEach(b => {
+        tableBody.innerHTML += `
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px;">${b.name}<br><small>${b.phone}</small></td>
+                <td style="padding: 10px;">${b.date}<br>${b.time}</td>
+                <td style="padding: 10px;">${b.service}</td>
+                <td style="padding: 10px;"><span style="color: green;">جديد</span></td>
+            </tr>
+        `;
+    });
+}
 
 
             
@@ -1377,6 +1422,43 @@ function sendEmergencySOS() {
         </div>
     </div>
 </div>
+
+
+
+<div style="text-align: center; padding: 20px;">
+    <button onclick="openAdminPanel()" style="background: none; border: none; color: #ccc; cursor: pointer; font-size: 12px;">إدارة العيادة (للطبيب فقط)</button>
+</div>
+
+<div id="admin-panel" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; overflow-y: auto; padding: 20px; direction: rtl; font-family: 'Cairo';">
+    <div style="background: white; max-width: 900px; margin: 20px auto; border-radius: 15px; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px;">
+            <h2 style="color: #121626; margin: 0;">لوحة إدارة الحجوزات 📋</h2>
+            <button onclick="closeAdminPanel()" style="background: #ff3333; color: white; border: none; padding: 5px 15px; border-radius: 8px; cursor: pointer;">إغلاق</button>
+        </div>
+        
+        <div id="login-section" style="padding: 40px; text-align: center;">
+            <h3>يرجى إدخال رمز الدخول</h3>
+            <input type="password" id="admin-pass" placeholder="الرمز السري" style="padding: 10px; border-radius: 8px; border: 1px solid #ddd; width: 200px;">
+            <button onclick="checkAdminPass()" class="btn-submit" style="padding: 10px 20px; margin-top: 10px;">دخول</button>
+        </div>
+
+        <div id="bookings-list" style="display: none; margin-top: 20px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: right;">
+                <thead>
+                    <tr style="background: #f4f4f4;">
+                        <th style="padding: 12px; border: 1px solid #ddd;">المريض</th>
+                        <th style="padding: 12px; border: 1px solid #ddd;">الموعد</th>
+                        <th style="padding: 12px; border: 1px solid #ddd;">الخدمة</th>
+                        <th style="padding: 12px; border: 1px solid #ddd;">الحالة</th>
+                    </tr>
+                </thead>
+                <tbody id="bookings-table-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 
 
 </body>
