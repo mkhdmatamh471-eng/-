@@ -873,13 +873,7 @@ function analyzePain() {
         if (e.key === 'Enter') sendMsg();
     }
 
-    // 4. نظام الحجز المطور: التكامل مع واتساب
-    const dateInput = document.getElementById('date');
-    if (dateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.setAttribute('min', today);
-    }
-
+        // 4. نظام الحجز المطور: التكامل مع واتساب
     const bookingForm = document.getElementById('bookingForm');
     if (bookingForm) {
         bookingForm.addEventListener('submit', function(e) {
@@ -888,37 +882,42 @@ function analyzePain() {
             const btn = this.querySelector('button');
             const msgDiv = document.getElementById('response-msg');
             
-            // استخراج بيانات الحجز
-const name = document.getElementById('name').value;
-const phone = document.getElementById('phone').value;
-const date = document.getElementById('date').value;
-const time = document.getElementById('time').value;
-const period = document.getElementById('period').value;
-const service = document.getElementById('service').value;
-const chronic = document.getElementById('chronic-diseases').value;
-const allergy = document.getElementById('allergy').value;
-const painLoc = document.getElementById('tooth-location').value;
-const painDesc = document.getElementById('pain-type').value;
-// التحقق مما إذا كان المريض قد اختار صورة
-const imageInput = document.getElementById('patient-image');
-const hasImage = imageInput && imageInput.files.length > 0 ? "%0A📸 *ملاحظة:* لقد قمت بتجهيز صورة للحالة وسأقوم بإرسالها لك الآن في هذه المحادثة للاطلاع عليها." : "";
+            // استخراج بيانات الحجز الأساسية
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+            const period = document.getElementById('period').value;
+            const service = document.getElementById('service').value;
+            
+            // استخراج بيانات السجل الطبي
+            const chronic = document.getElementById('chronic-diseases').value;
+            const allergy = document.getElementById('allergy').value;
 
-// أضف هذا المتغير لحساب الخطورة في الرسالة
-const riskText = selectedSymptoms.length > 2 ? "⚠️ حالة عاجلة" : "حالة عادية";
+            // التحقق من وجود صورة
+            const imageInput = document.getElementById('patient-image');
+            const hasImage = (imageInput && imageInput.files.length > 0) ? "%0A📸 *ملاحظة:* سأقوم بإرسال صورة الحالة الآن." : "";
 
-const message = 
-    `*طلب حجز ذكي - عيادة الرَّحْمَٰن* %0A` +
-    `--------------------------%0A` +
-    `*المريض:* ${name}%0A` +
-    `*تقييم الحالة:* ${riskText}%0A` +
-    `--------------------------%0A` +
-    `*مكان الألم:* ${selectedJaw}%0A` +
-    `*الأعراض:* ${selectedSymptoms.join(' + ')}%0A` +
-    `*التاريخ الطبي:* ${chronic} | ${allergy}%0A` +
-    `--------------------------%0A` +
-    `*الموعد المقترح:* ${date} (${period})%0A` +
-    hasImage;
+            // تحديد مستوى الخطورة بناءً على المساعد الذكي
+            const riskText = (selectedSymptoms.length > 2) ? "⚠️ حالة عاجلة" : "حالة عادية";
+            const symptomsList = selectedSymptoms.length > 0 ? selectedSymptoms.join(' + ') : "لم يتم تحديد أعراض";
+            const jawArea = selectedJaw ? selectedJaw : "غير محدد";
 
+            // بناء نص الرسالة
+            const message = 
+                `*طلب حجز ذكي - عيادة الرَّحْمَٰن* %0A` +
+                `--------------------------%0A` +
+                `*المريض:* ${name}%0A` +
+                `*الهاتف:* ${phone}%0A` +
+                `*تقييم الحالة:* ${riskText}%0A` +
+                `--------------------------%0A` +
+                `*الخدمة:* ${service}%0A` +
+                `*مكان الألم:* ${jawArea}%0A` +
+                `*الأعراض:* ${symptomsList}%0A` +
+                `*التاريخ الطبي:* ${chronic} | ${allergy}%0A` +
+                `--------------------------%0A` +
+                `*الموعد:* ${date} - الساعة: ${time} (${period})%0A` +
+                hasImage;
 
             const whatsappNumber = "967771134103";
             const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
@@ -929,23 +928,25 @@ const message =
             }
             if (msgDiv) {
                 msgDiv.style.color = "var(--main-dark)";
-                msgDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري فتح واتساب للتأكيد...`;
+                msgDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري فتح واتساب...`;
             }
 
             setTimeout(() => {
                 window.open(whatsappUrl, '_blank');
-                this.reset();
                 if (btn) {
                     btn.innerText = "تأكيد الحجز المبدئي";
                     btn.disabled = false;
                 }
                 if (msgDiv) {
                     msgDiv.style.color = "green";
-                    msgDiv.innerHTML = `<i class="fas fa-check-circle"></i> تم التحويل بنجاح! شكراً لك.`;
+                    msgDiv.innerHTML = `<i class="fas fa-check-circle"></i> تم التحويل!`;
                 }
-            }, 1200);
+            }, 1000);
         });
     }
+
+
+            
 </script>
 
 </body>
