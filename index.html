@@ -454,25 +454,51 @@ body.dark-mode .symptom-tag.selected {
     </div>
     <div class="card" style="max-width: 700px; margin: 0 auto; text-align: right;">
         
-    <label class="file-upload-label">1. حدد مكان الألم بدقة (اضغط على الصورة):</label>
-<div class="tooth-map-container" style="display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; flex-wrap: wrap;">
-    <div class="tooth-zone" onclick="setJaw('الفك العلوي - يمين', this)" title="علوي يمين">
-        <img src="https://cdn-icons-png.flaticon.com/512/3467/3467831.png" width="60">
-        <span>علوي يمين</span>
+    <label class="file-upload-label">1. حدد موقع السن أو المنطقة المصابة بدقة:</label>
+<div class="dental-chart-container" style="direction: ltr; background: #f8f9fa; padding: 20px; border-radius: 15px; border: 1px solid var(--border-color); margin-bottom: 25px;">
+    
+    <div class="jaw-row upper-jaw" style="display: flex; justify-content: center; gap: 5px; margin-bottom: 15px;">
+        <div class="quadrant" style="display: flex; gap: 4px;">
+            <div class="tooth-unit" onclick="selectTooth('علوي-يسار-طاحن', this)" title="طواحن علوية يسار">🦷<br><small>Molar</small></div>
+            <div class="tooth-unit" onclick="selectTooth('علوي-يسار-ضاحك', this)" title="ضواحك علوية يسار">🦷<br><small>PreM</small></div>
+            <div class="tooth-unit" onclick="selectTooth('علوي-يسار-أمامية', this)" title="قواطع علوية يسار">🦷<br><small>Ant</small></div>
+        </div>
+        <div style="width: 2px; background: #ccc; margin: 0 10px;"></div>
+        <div class="quadrant" style="display: flex; gap: 4px; flex-direction: row-reverse;">
+            <div class="tooth-unit" onclick="selectTooth('علوي-يمين-طاحن', this)" title="طواحن علوية يمين">🦷<br><small>Molar</small></div>
+            <div class="tooth-unit" onclick="selectTooth('علوي-يمين-ضاحك', this)" title="ضواحك علوية يمين">🦷<br><small>PreM</small></div>
+            <div class="tooth-unit" onclick="selectTooth('علوي-يمين-أمامية', this)" title="قواطع علوية يمين">🦷<br><small>Ant</small></div>
+        </div>
     </div>
-    <div class="tooth-zone" onclick="setJaw('الفك العلوي - يسار', this)" title="علوي يسار">
-        <img src="https://cdn-icons-png.flaticon.com/512/3467/3467831.png" width="60" style="transform: scaleX(-1);">
-        <span>علوي يسار</span>
-    </div>
-    <div class="tooth-zone" onclick="setJaw('الفك السفلي - يمين', this)" title="سفلي يمين">
-        <img src="https://cdn-icons-png.flaticon.com/512/3467/3467746.png" width="60">
-        <span>سفلي يمين</span>
-    </div>
-    <div class="tooth-zone" onclick="setJaw('الفك السفلي - يسار', this)" title="سفلي يسار">
-        <img src="https://cdn-icons-png.flaticon.com/512/3467/3467746.png" width="60" style="transform: scaleX(-1);">
-        <span>سفلي يسار</span>
+
+    <hr style="border: 0; border-top: 2px dashed #ddd; margin: 10px 0;">
+
+    <div class="jaw-row lower-jaw" style="display: flex; justify-content: center; gap: 5px;">
+        <div class="quadrant" style="display: flex; gap: 4px;">
+            <div class="tooth-unit" onclick="selectTooth('سفلي-يسار-طاحن', this)" title="طواحن سفلية يسار">🦷<br><small>Molar</small></div>
+            <div class="tooth-unit" onclick="selectTooth('سفلي-يسار-ضاحك', this)" title="ضواحك سفلية يسار">🦷<br><small>PreM</small></div>
+            <div class="tooth-unit" onclick="selectTooth('سفلي-يسار-أمامية', this)" title="قواطع سفلية يسار">🦷<br><small>Ant</small></div>
+        </div>
+        <div style="width: 2px; background: #ccc; margin: 0 10px;"></div>
+        <div class="quadrant" style="display: flex; gap: 4px; flex-direction: row-reverse;">
+            <div class="tooth-unit" onclick="selectTooth('سفلي-يمين-طاحن', this)" title="طواحن سفلية يمين">🦷<br><small>Molar</small></div>
+            <div class="tooth-unit" onclick="selectTooth('سفلي-يمين-ضاحك', this)" title="ضواحك سفلية يمين">🦷<br><small>PreM</small></div>
+            <div class="tooth-unit" onclick="selectTooth('سفلي-يمين-أمامية', this)" title="قواطع سفلية يمين">🦷<br><small>Ant</small></div>
+        </div>
     </div>
 </div>
+
+<style>
+.tooth-unit {
+    width: 45px; height: 60px; background: white; border: 1px solid #ddd;
+    border-radius: 8px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; cursor: pointer; transition: 0.2s; font-size: 18px;
+}
+.tooth-unit small { font-size: 9px; color: #777; font-weight: bold; }
+.tooth-unit:hover { border-color: var(--accent-neon); transform: scale(1.1); z-index: 10; }
+.tooth-unit.active { background: var(--accent-neon); color: var(--main-dark); border-color: var(--main-dark); box-shadow: 0 0 10px rgba(0,229,255,0.5); }
+</style>
+
 
         <label class="file-upload-label">2. حدد الأعراض (يمكنك اختيار أكثر من واحد):</label>
         <div id="symptoms-container" style="margin-bottom: 20px;">
@@ -483,6 +509,13 @@ body.dark-mode .symptom-tag.selected {
             <div class="symptom-tag" onclick="toggleSymptom('ألم عند العض', this)">ألم أثناء الأكل</div>
             <div class="symptom-tag" onclick="toggleSymptom('رائحة كريهة', this)">رائحة فم</div>
         </div>
+<label class="file-upload-label">3. حدد مستوى شدة الألم (0 - 10):</label>
+<div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+    <span id="pain-score-val" style="font-weight: bold; color: var(--accent-neon); font-size: 20px;">5</span>
+    <input type="range" id="pain-scale" min="0" max="10" value="5" step="1" 
+           oninput="document.getElementById('pain-score-val').innerText = this.value"
+           style="flex: 1; accent-color: var(--accent-neon);">
+</div>
 
         <button onclick="advancedAnalysis()" class="btn-submit" style="width: 100%;">بدء التحليل الفوري</button>
 
@@ -700,6 +733,17 @@ body.dark-mode .symptom-tag.selected {
 
 let selectedJaw = "";
 let selectedSymptoms = [];
+let selectedTeeth = [];
+
+function selectTooth(toothName, el) {
+    if (selectedTeeth.includes(toothName)) {
+        selectedTeeth = selectedTeeth.filter(t => t !== toothName);
+        el.classList.remove('active');
+    } else {
+        selectedTeeth.push(toothName);
+        el.classList.add('active');
+    }
+}
 
 function setJaw(jaw, el) {
     selectedJaw = jaw;
@@ -718,39 +762,50 @@ function toggleSymptom(symptom, el) {
 }
 
 async function advancedAnalysis() {
-    if (!selectedJaw) { alert("يرجى تحديد منطقة الألم أولاً"); return; }
-    if (selectedSymptoms.length === 0) { alert("يرجى اختيار عرض واحد على الأقل"); return; }
+    // التحقق من المدخلات الجديدة
+    if (selectedTeeth.length === 0) { 
+        alert("يرجى تحديد موقع السن أو المنطقة المصابة على الخريطة"); 
+        return; 
+    }
+    if (selectedSymptoms.length === 0) { 
+        alert("يرجى اختيار عرض واحد على الأقل لوصف الحالة"); 
+        return; 
+    }
 
+    const painLevel = document.getElementById('pain-scale').value;
     const resDiv = document.getElementById('smart-result');
     const resTitle = document.getElementById('res-title');
     const resDesc = document.getElementById('res-desc');
     const resAction = document.getElementById('res-action');
 
-    // إظهار مؤشر التحميل
+    // إظهار مؤشر التحميل بتصميم عصري
     resDiv.style.display = "block";
-    resTitle.innerHTML = `<i class="fas fa-robot"></i> جاري تحليل بياناتك بالذكاء الاصطناعي...`;
-    resDesc.innerText = "يرجى الانتظار قليلاً، يقوم النظام بتقييم الأعراض بناءً على البروتوكولات الطبية الحديثة.";
+    resTitle.innerHTML = `<i class="fas fa-microscope fa-spin" style="color: var(--accent-neon);"></i> جاري التحليل السريري الرقمي...`;
+    resDesc.innerText = "يقوم النظام الآن بمطابقة أعراضك مع قاعدة بيانات البروتوكولات الطبية لتقديم تقييم أولي.";
     resAction.innerText = "";
     resDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // إعداد مفتاح API (استخدم نفس طريقتك السابقة للأمان)
+    // مفتاح الواجهة البرمجية (API Key)
     const p1 = "gsk_emKf0CkNg9RaiF";
     const p2 = "SxbDBYWGdyb3FYbmv3jYs";
     const p3 = "KnN7wxrGyU2mZi";
     const p4 = "Oyo"; 
     const FINAL_KEY = p1 + p2 + p3 + p4;
 
-    // صياغة الطلب للذكاء الاصطناعي
+    // صياغة البرومبت (Prompt) الطبي المتطور
     const promptText = `
-أنت طبيب أسنان افتراضي مساعد للدكتور مالك. قام مريض بتقديم البيانات التالية:
-- مكان الألم: ${selectedJaw}
-- الأعراض المختارة: ${selectedSymptoms.join('، ')}
+أنت المساعد التشخيصي الرقمي لعيادة الدكتور مالك. تلقيت بيانات مريض كالتالي:
+- الأسنان المتضررة: ${selectedTeeth.join('، ')}
+- الأعراض المبلغ عنها: ${selectedSymptoms.join('، ')}
+- مستوى الألم (VAS Score): ${painLevel} من 10
 
-المطلوب: 
-1. تحليل محتمل للحالة باختصار شديد (سطرين).
-2. تحديد مستوى الخطورة (منخفضة، متوسطة، طارئة).
-3. نصيحة سريعة للمريض.
-اجعل الأسلوب مهنياً ومطمئناً باللغة العربية.
+المطلوب تقديم تقرير استشاري سريع يتضمن:
+1. "التشخيص المحتمل": (بناءً على تداخل موقع السن مع الأعراض).
+2. "تصنيف الحالة": (عاجلة جداً / تتطلب فحصاً قريباً / متابعة روتينية).
+3. "الإجراء المتوقع": (مثلاً: حشو عصب، علاج لثة، تلميع وتصفية).
+4. "نصيحة مؤقتة": (ماذا يفعل المريض الآن لتخفيف الألم).
+
+اجعل الأسلوب طبياً، مقتضباً، ومطمئناً جداً.
 `;
 
     try {
@@ -763,42 +818,33 @@ async function advancedAnalysis() {
             body: JSON.stringify({
                 model: "llama-3.1-8b-instant",
                 messages: [
-                    { role: "system", content: "أنت مساعد تشخيصي خبير في طب الأسنان." },
+                    { 
+                        role: "system", 
+                        content: "أنت خبير في فرز حالات طب الأسنان (Dental Triage) وتقديم استشارات أولية دقيقة." 
+                    },
                     { role: "user", content: promptText }
                 ],
-                temperature: 0.5 // لجعل الإجابة متزنة وطبية
+                temperature: 0.4 // تقليل العشوائية لضمان دقة طبية أعلى
             })
         });
         
         const data = await response.json();
         const aiAnalysis = data.choices[0].message.content;
 
-        // عرض النتيجة
-        resTitle.innerHTML = `<i class="fas fa-stethoscope"></i> تقرير التشخيص الأولي الذكي:`;
-        resDesc.innerHTML = aiAnalysis.replace(/\n/g, '<br>'); // لتحويل السطور الجديدة لبريك HTML
-        resAction.innerHTML = "💡 يرجى متابعة الحجز أدناه لإرسال هذا التحليل للدكتور مالك.";
+        // عرض النتيجة النهائية للمريض
+        resTitle.innerHTML = `<i class="fas fa-clipboard-check"></i> التقييم الأولي لحالتك:`;
+        resDesc.innerHTML = aiAnalysis.replace(/\n/g, '<br>'); 
+        resAction.innerHTML = `
+            <div style="margin-top: 15px; padding: 10px; border-top: 1px solid #ddd;">
+                <strong>الخطوة القادمة:</strong> اضغط على "تأكيد الحجز" في الأسفل لإرسال هذه البيانات مباشرة للدكتور مالك عبر الواتساب.
+            </div>`;
 
     } catch (error) {
-        resTitle.innerText = "عذراً، حدث خطأ";
-        resDesc.innerText = "لم نتمكن من الاتصال بالخادم الذكي. ولكن أعراضك تشير لضرورة الفحص السريري.";
+        resTitle.innerText = "عذراً، تعذر إتمام التحليل التلقائي";
+        resDesc.innerText = "يبدو أن هناك ضغطاً على الخادم. لا تقلق، يمكنك وصف حالتك مباشرة للدكتور عند الحجز.";
     }
 }
 
-
-function analyzePain() {
-    const location = document.getElementById('tooth-location').value;
-    const type = document.getElementById('pain-type').value;
-    const resultDiv = document.getElementById('analysis-result');
-    
-    let advice = "";
-    if (type.includes("مستمر")) advice = "هذا قد يشير لالتهاب في العصب. ننصحك بحجز موعد (علاج عصب) فوراً.";
-    else if (type.includes("بارد")) advice = "قد يكون تسوساً بسيطاً أو حساسية أسنان. يفضل عمل حشوة تجميلية.";
-    else if (type.includes("نزيف")) advice = "تحتاج لتنظيف جير وتلميع لحماية اللثة من التراجع.";
-    else advice = "يفضل الفحص السريري لتحديد السبب بدقة.";
-
-    resultDiv.style.display = "block";
-    resultDiv.innerHTML = `<strong>النتيجة المتوقعة:</strong> ${advice} <br> <small>سيتم إدراج هذه البيانات في طلب الحجز الخاص بك.</small>`;
-}
 
     async function sendMsg() {
     const input = document.getElementById('chat-input');
