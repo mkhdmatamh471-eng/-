@@ -323,7 +323,7 @@
     </div>
 </div>
 
-            <input type="range" min="0" max="100" value="50" class="slider-range" aria-label="أداة مقارنة الصور قبل وبعد" oninput="moveSlider(this.value)">
+     
         </div>
 
         <div class="section-title" id="booking" style="margin-top: 80px;">
@@ -448,12 +448,7 @@
     }
 
     // 2. مؤشر قبل وبعد (Before & After Slider)
-    function moveSlider(value) {
-        const beforeImg = document.getElementById('img-before');
-        if (beforeImg) {
-            beforeImg.style.width = value + "%";
-        }
-    }
+    
 
     // 3. نظام الدردشة الذكي (Chatbot UI)
     function toggleChat() {
