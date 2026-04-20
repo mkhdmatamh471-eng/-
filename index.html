@@ -374,6 +374,76 @@ body.dark-mode .symptom-tag.selected {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+/* الزر العائم */
+#sos-trigger {
+    position: fixed;
+    bottom: 30px;
+    left: 30px; /* عكس جهة الشات بوت */
+    background: #ff0000;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 50px;
+    cursor: pointer;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    box-shadow: 0 10px 20px rgba(255, 0, 0, 0.4);
+    animation: sos-pulse 2s infinite;
+}
+
+@keyframes sos-pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(255, 0, 0, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+}
+
+/* واجهة الطوارئ بملء الشاشة */
+#sos-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 3000;
+    display: none; /* مخفي افتراضياً */
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+}
+
+.sos-content {
+    background: #fff;
+    width: 90%;
+    max-width: 450px;
+    border-radius: 25px;
+    padding: 30px;
+    position: relative;
+    text-align: center;
+}
+
+body.dark-mode .sos-content { background: #1a1a1a; color: #fff; }
+
+.close-sos {
+    position: absolute; top: 15px; left: 15px;
+    background: #eee; border: none; padding: 5px 15px;
+    border-radius: 15px; cursor: pointer;
+}
+
+.sos-header i { font-size: 50px; color: #ff0000; margin-bottom: 15px; }
+.sos-header h2 { margin: 0; color: #ff0000; }
+
+.sos-form { margin-top: 30px; display: grid; gap: 15px; text-align: right; }
+.sos-form input, .sos-form select {
+    padding: 15px; border: 2px solid #ddd; border-radius: 12px; font-family: 'Cairo';
+}
+
+.sos-send-btn {
+    background: #25D366; color: white; padding: 18px;
+    border: none; border-radius: 12px; font-weight: bold;
+    font-size: 18px; cursor: pointer; transition: 0.3s;
+}
+
+.sos-send-btn:hover { background: #128C7E; transform: scale(1.02); }
 
     </style>
 </head>
@@ -846,6 +916,41 @@ async function advancedAnalysis() {
 }
 
 
+
+// وظيفة إظهار/إخفاء وضع الطوارئ
+function toggleSOS(show) {
+    const overlay = document.getElementById('sos-overlay');
+    overlay.style.display = show ? 'flex' : 'none';
+    
+    // منع التمرير في الخلفية عند فتح الطوارئ
+    document.body.style.overflow = show ? 'hidden' : 'auto';
+}
+
+// إرسال نداء الاستغاثة
+function sendEmergencySOS() {
+    const location = document.getElementById('emergency-location').value;
+    const phone = document.getElementById('emergency-phone').value;
+
+    if (!phone) {
+        alert("يرجى إدخال رقم هاتفك لكي نتمكن من مساعدتك فوراً");
+        return;
+    }
+
+    const message = 
+        `🚨 *نداء استغاثة عاجل (ألم حاد)* 🚨%0A` +
+        `--------------------------%0A` +
+        `*رقم المريض:* ${phone}%0A` +
+        `*موقع الألم:* ${location}%0A` +
+        `--------------------------%0A` +
+        `*ملاحظة:* المريض يطلب مساعدة فورية خارج المواعيد الروتينية.`;
+
+    const whatsappNumber = "967771134103"; // رقم الدكتور مالك
+    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+    
+    // إغلاق النافذة بعد الإرسال
+    toggleSOS(false);
+}
+
     async function sendMsg() {
     const input = document.getElementById('chat-input');
     const chatBody = document.getElementById('chat-body');
@@ -994,6 +1099,46 @@ async function advancedAnalysis() {
 
             
 </script>
+
+<div id="sos-trigger" onclick="toggleSOS(true)">
+    <i class="fas fa-ambulance"></i>
+    <span>طوارئ - ألم حاد</span>
+</div>
+
+<div id="sos-overlay">
+    <div class="sos-content">
+        <button class="close-sos" onclick="toggleSOS(false)">&times; إغلاق</button>
+        
+        <div class="sos-header">
+            <i class="fas fa-exclamation-circle fa-beat"></i>
+            <h2>وضع المساعدة الفورية</h2>
+            <p>سيتم توجيه بياناتك للدكتور مالك كأولوية قصوى.</p>
+        </div>
+
+        <div class="sos-form">
+            <label>أين تشعر بالألم؟</label>
+            <select id="emergency-location">
+                <option value="غير محدد">اختر المنطقة...</option>
+                <option value="الفك العلوي">الفك العلوي</option>
+                <option value="الفك السفلي">الفك السفلي</option>
+                <option value="الجهة اليمنى">جهة اليمين</option>
+                <option value="الجهة اليسرى">جهة اليسار</option>
+            </select>
+
+            <label>رقم هاتفك للتواصل الفوري:</label>
+            <input type="tel" id="emergency-phone" placeholder="7XXXXXXXX" required>
+
+            <button onclick="sendEmergencySOS()" class="sos-send-btn">
+                <i class="fab fa-whatsapp"></i> إرسال نداء استغاثة عاجل
+            </button>
+        </div>
+        
+        <div class="sos-footer">
+            <p>أو اتصل مباشرة: <a href="tel:771134103">771134103</a></p>
+        </div>
+    </div>
+</div>
+
 
 </body>
 </html>
