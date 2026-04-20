@@ -10,6 +10,36 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
+    
+    header {
+    /* ... إعداداتك السابقة ... */
+    background: rgba(255, 255, 255, 0.8); /* شفافية بسيطة */
+    backdrop-filter: blur(10px); /* تأثير الضباب */
+    -webkit-backdrop-filter: blur(10px);
+}
+
+body.dark-mode header {
+    background: rgba(18, 22, 38, 0.8);
+}
+
+    
+    ::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-light);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--main-dark);
+    border-radius: 10px;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: var(--accent-neon);
+}
+
         /* تعريف المتغيرات الشاملة */
         :root {
             --main-dark: #121626; 
@@ -43,17 +73,25 @@
 
         /* الهيدر */
         header {
-            background: var(--bg-card);
-            padding: 15px 5%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            transition: background-color 0.3s;
-        }
+    position: sticky;
+    top: 0;
+    z-index: 2000; /* رفع قيمة z-index لضمان البقاء في المقدمة */
+    background: var(--bg-card);
+    transition: all 0.3s ease;
+}
+
+.quick-nav-container {
+    position: sticky;
+    top: 65px; /* تأكد أن هذه القيمة تساوي أو تزيد قليلاً عن ارتفاع الهيدر */
+    z-index: 1999; /* أقل من الهيدر بدرجة واحدة */
+    display: flex;
+    justify-content: space-around;
+    background: var(--bg-card);
+    padding: 10px 5%;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+}
 
         header .logo-area { display: flex; align-items: center; gap: 10px; }
         header h1 { font-size: 20px; color: var(--main-dark); margin: 0; transition: color 0.3s; }
@@ -206,6 +244,20 @@
             .contact-info-block span { justify-content: center; text-align: center; }
             .slogan-footer { justify-content: center; }
         }
+
+.tooth-unit {
+    /* ... إعداداتك السابقة ... */
+    position: relative;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.05); /* ظل داخلي خفيف */
+}
+
+.tooth-unit:active {
+    transform: scale(0.95); /* تأثير الضغط عند النقر */
+}
+
+/* تمييز الأسنان العلوية والسفلية بألوان خفيفة في الوضع الليلي */
+body.dark-mode .upper-jaw .tooth-unit { background: #1e253a; }
+body.dark-mode .lower-jaw .tooth-unit { background: #1a2033; }
 
 /* تنسيق معرض الصور الجديد */
 .gallery-wrapper {
@@ -391,6 +443,12 @@ body.dark-mode .symptom-tag.selected {
     font-weight: bold;
     box-shadow: 0 10px 20px rgba(255, 0, 0, 0.4);
     animation: sos-pulse 2s infinite;
+transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#sos-trigger:hover {
+    padding: 15px 35px; /* يتوسع قليلاً عند الوقوف عليه */
+    background: #e60000;
 }
 
 @keyframes sos-pulse {
@@ -445,25 +503,204 @@ body.dark-mode .sos-content { background: #1a1a1a; color: #fff; }
 
 .sos-send-btn:hover { background: #128C7E; transform: scale(1.02); }
 
+
+/* تنسيق أزرار التنقل السريع */
+.quick-nav-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: var(--bg-card);
+    padding: 15px 5%;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 70px; /* تحت الهيدر مباشرة */
+    z-index: 999;
+    gap: 10px;
+}
+
+.q-link {
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    transition: 0.3s;
+}
+
+.q-icon {
+    width: 45px;
+    height: 45px;
+    background: var(--bg-light);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--main-dark);
+    font-size: 18px;
+    transition: 0.3s;
+    border: 1px solid var(--border-color);
+}
+
+.q-link span {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.q-link:hover .q-icon {
+    background: var(--accent-neon);
+    color: var(--main-dark);
+    transform: translateY(-3px);
+}
+
+/* تمييز زر الطوارئ في الوصول السريع */
+.emergency-q .q-icon {
+    background: #fff5f5;
+    color: #ff3333;
+    border-color: #ffcccc;
+}
+
+.emergency-q:hover .q-icon {
+    background: #ff3333;
+    color: white;
+}
+
+/* تحسين العرض للجوال */
+@media (max-width: 600px) {
+    .quick-nav-container {
+        padding: 10px 2%;
+    }
+    .q-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    .q-link span {
+        font-size: 10px;
+    }
+}
+
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo-area">
-            <i class="fas fa-tooth" style="font-size: 24px; color: var(--main-dark);"></i>
-            <h1>عيادة الرَّحْمَٰن <span>لطب الأسنان</span></h1>
-        </div>
-        <nav>
-            <a href="#">الرئيسية</a>
-            <a href="#services">خدماتنا</a>
-            <a href="#booking">حجز موعد</a>
-        </nav>
-        <div class="header-controls">
-            <button class="theme-toggle" onclick="toggleTheme()" aria-label="تبديل الوضع الليلي" title="تغيير المظهر"><i class="fas fa-moon" id="theme-icon"></i></button>
-            <button class="btn-login" aria-label="السجل الرقمي">السجل الرقمي <i class="fas fa-user-shield"></i></button>
-        </div>
-    </header>
+    <div class="logo-area">
+        <i class="fas fa-tooth" style="font-size: 24px; color: var(--main-dark);"></i>
+        <h1>عيادة الرَّحْمَٰن <span>لطب الأسنان</span></h1>
+    </div>
+    <nav>
+        <a href="#">الرئيسية</a>
+        <a href="#services">خدماتنا</a>
+        <a href="#booking">حجز موعد</a>
+    </nav>
+    <div class="header-controls">
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="تبديل الوضع الليلي" title="تغيير المظهر"><i class="fas fa-moon" id="theme-icon"></i></button>
+        <button class="btn-login" aria-label="السجل الرقمي">السجل الرقمي <i class="fas fa-user-shield"></i></button>
+    </div>
+</header>
+
+<div class="quick-nav-container">
+    <a href="#booking" class="q-link">
+        <div class="q-icon"><i class="fas fa-calendar-check"></i></div>
+        <span>حجز موعد</span>
+    </a>
+    <a href="javascript:void(0)" onclick="document.getElementById('dental-diagnosis-section').scrollIntoView({behavior:'smooth'})" class="q-link">
+        <div class="q-icon"><i class="fas fa-stethoscope"></i></div>
+        <span>فحص ذكي</span>
+    </a>
+    <a href="javascript:void(0)" onclick="toggleSOS(true)" class="q-link emergency-q">
+        <div class="q-icon"><i class="fas fa-pills"></i></div>
+        <span>ألم حاد</span>
+    </a>
+    <a href="https://wa.me/967771134103" target="_blank" class="q-link">
+        <div class="q-icon"><i class="fab fa-whatsapp"></i></div>
+        <span>استشارة</span>
+    </a>
+</div>
+
+<style>
+    .quick-nav-container {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        background: var(--bg-card);
+        padding: 10px 5%;
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 70px; /* المسافة يجب أن تساوي ارتفاع الهيدر لكي يظهر تحته مباشرة */
+        z-index: 999;
+        gap: 10px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .q-link {
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        flex: 1;
+        transition: 0.3s;
+    }
+
+    .q-icon {
+        width: 42px;
+        height: 42px;
+        background: var(--bg-light);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--main-dark);
+        font-size: 18px;
+        transition: 0.3s;
+        border: 1px solid var(--border-color);
+    }
+
+    .q-link span {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-dark);
+    }
+
+    .q-link:hover .q-icon {
+        background: var(--accent-neon);
+        color: var(--main-dark);
+        transform: translateY(-3px);
+    }
+
+    /* تمييز زر الطوارئ (ألم حاد) */
+    .emergency-q .q-icon {
+        background: #fff5f5;
+        color: #ff3333;
+        border-color: #ffcccc;
+    }
+
+    .emergency-q:hover .q-icon {
+        background: #ff3333;
+        color: white;
+    }
+
+    /* تحسين العرض للجوال */
+    @media (max-width: 600px) {
+        .quick-nav-container {
+            padding: 8px 2%;
+            top: 60px; /* تعديل الارتفاع ليتناسب مع الهيدر الصغير في الجوال */
+        }
+        .q-icon {
+            width: 38px;
+            height: 38px;
+            font-size: 16px;
+        }
+        .q-link span {
+            font-size: 10px;
+        }
+    }
+</style>
 
     <section class="hero">
         <div class="hero-container">
@@ -517,7 +754,9 @@ body.dark-mode .sos-content { background: #1a1a1a; color: #fff; }
      
         </div>
         
-  <div class="container">
+  <div class="container" id="dental-diagnosis-section">
+    </div>
+
     <div class="section-title">
         <h2>المساعد التشخيصي الذكي</h2>
         <p>اختر مكان الألم والأعراض بدقة لتحليل حالتك</p>
