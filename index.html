@@ -234,7 +234,16 @@
                 <form id="bookingForm">
                     <input type="text" id="name" placeholder="الاسم الكامل للمريض" required>
                     <input type="tel" id="phone" placeholder="رقم الهاتف للتواصل" required>
-                    <input type="date" id="date" required>
+                    <div style="display: flex; gap: 10px;">
+    <input type="date" id="date" style="flex: 2;" required>
+    <input type="time" id="time" style="flex: 1;" required>
+</div>
+<select id="period" required>
+    <option value="" disabled selected>اختر الفترة</option>
+    <option value="صباحاً">الفترة الصباحية</option>
+    <option value="مساءً">الفترة المسائية</option>
+</select>
+
                     <select id="service" required>
     <option value="" disabled selected>نوع المعالجة المطلوبة</option>
     <option value="زراعة">زراعة أسنان</option>
@@ -353,26 +362,26 @@
     document.getElementById('date').setAttribute('min', today);
 
     document.getElementById('bookingForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const btn = this.querySelector('button');
-        const msgDiv = document.getElementById('response-msg');
-        
-        // جمع البيانات من المدخلات
-        const name = document.getElementById('name').value;
-        const phone = document.getElementById('phone').value;
-        const date = document.getElementById('date').value;
-        const service = document.getElementById('service').value;
+    e.preventDefault();
+    
+    const name = document.getElementById('name').value;
+    const phone = document.getElementById('phone').value;
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value; // جلب الوقت
+    const period = document.getElementById('period').value; // جلب الفترة
+    const service = document.getElementById('service').value;
 
-        // تجهيز نص الرسالة (تنسيق أنيق للواتساب)
-        const message = 
-            `*طلب حجز جديد عبر الموقع*%0A` +
-            `--------------------------%0A` +
-            `*الاسم:* ${name}%0A` +
-            `*الجوال:* ${phone}%0A` +
-            `*الموعد:* ${date}%0A` +
-            `*المعالجة:* ${service}%0A` +
-            `--------------------------`;
+    const message = 
+        `*طلب حجز جديد عبر الموقع*%0A` +
+        `--------------------------%0A` +
+        `*الاسم:* ${name}%0A` +
+        `*الجوال:* ${phone}%0A` +
+        `*الموعد:* ${date}%0A` +
+        `*الوقت:* ${time} (${period})%0A` + // إضافة الوقت للرسالة
+        `*المعالجة:* ${service}%0A` +
+        `--------------------------`;
+
+    
 
         // رقم الواتساب بالصيغة الدولية بدون (+) أو (00)
         const whatsappNumber = "967771134103";
