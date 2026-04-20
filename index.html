@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دكتور مالك عبد الرحمن - عيادة الرحمن لطب وجراحة الفم والأسنان</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --main-dark: #121626; /* كحلي داكن جداً مستوحى من التصميم */
+            --accent-neon: #00e5ff; /* أزرق نيون ناعم للتأثيرات */
+            --bg-light: #fdfdfd; /* أبيض كلاسيكي طبي */
+            --bg-card: #ffffff;
+            --text-dark: #333333;
+            --border-color: #eee;
+        }
+
+        /* متغيرات الوضع الليلي */
+        body.dark-mode {
+            --bg-light: #0a0c14;
+            --bg-card: #121626;
+            --text-dark: #f4f4f4;
+            --border-color: #222;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            scroll-behavior: smooth;
+            transition: 0.3s;
+        }
+
+        /* الهيدر */
+        header {
+            background: var(--bg-card);
+            padding: 15px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        header .logo-area { display: flex; align-items: center; gap: 10px; }
+        header h1 { font-size: 20px; color: var(--main-dark); margin: 0; }
+        header h1 span { color: var(--accent-neon); }
+        
+        .header-controls { display: flex; align-items: center; gap: 15px; }
+        nav a { text-decoration: none; color: var(--text-dark); margin-right: 20px; font-weight: 600; transition: 0.3s; }
+        nav a:hover { color: var(--main-dark); }
+
+        .btn-login { background: transparent; border: 2px solid var(--main-dark); color: var(--main-dark); padding: 5px 15px; border-radius: 20px; cursor: pointer; font-family: 'Cairo'; }
+        
+        .theme-toggle { cursor: pointer; font-size: 20px; color: var(--text-dark); background: none; border: none; }
+
+        /* قسم الهيرو المحسن للتصميم */
+        .hero { 
+            background: linear-gradient(135deg, var(--main-dark) 0%, #0a0c14 100%);
+            color: white; 
+            padding: 100px 5%; 
+            text-align: right; /* محاذاة لليمين مثل الكرت الداكن */
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::after {
+            content: ''; position: absolute; top: -50px; left: -50px; width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(0,229,255,0.2) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+        }
+
+        .hero h2 { font-size: 3rem; margin-bottom: 10px; }
+        .hero h2 span { color: var(--accent-neon); }
+        .hero h3 { font-size: 1.5rem; opacity: 0.9; font-weight: 600; }
+        .hero p { font-size: 1rem; max-width: 700px; margin: 0 0 30px; opacity: 0.8; }
+
+        .container { max-width: 1100px; margin: 50px auto; padding: 0 20px; }
+        .section-title { text-align: center; margin-bottom: 40px; }
+        .section-title h2 { color: var(--main-dark); font-size: 2.2rem; }
+
+        /* الخدمات المحدثة */
+        .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
+        .card { background: var(--bg-card); padding: 35px; border-radius: 20px; text-align: center; transition: 0.3s; border: 1px solid rgba(0,0,0,0.03); }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .card i { font-size: 50px; color: var(--main-dark); margin-bottom: 20px; }
+
+        /* قسم قبل وبعد (Slider) */
+        .ba-slider-container { position: relative; width: 100%; max-width: 800px; margin: 0 auto; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.1); background: #fff; }
+        .ba-slider-container img { width: 100%; display: block; object-fit: cover; aspect-ratio: 16/9; }
+        .img-before { position: absolute; top: 0; left: 0; width: 50%; height: 100%; overflow: hidden; border-right: 3px solid white; z-index: 2; }
+        .slider-range { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; z-index: 3; }
+
+        /* نموذج الحجز المطور */
+        .booking-wrapper { background: var(--bg-card); display: flex; flex-wrap: wrap; border-radius: 25px; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+        .booking-info { flex: 1; background: var(--main-dark); color: white; padding: 50px; min-width: 300px; text-align: right; }
+        .booking-form-area { flex: 2; padding: 50px; min-width: 300px; }
+        form { display: grid; gap: 15px; }
+        input, select { padding: 13px; border: 1px solid var(--border-color); border-radius: 10px; font-family: 'Cairo'; background: var(--bg-light); color: var(--text-dark); }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; font-size: 14px; opacity: 0.8; }
+        .btn-submit { background: var(--main-dark); color: white; padding: 16px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .btn-submit:hover { opacity: 0.9; }
+
+        /* نافذة الدردشة */
+        .chatbot-btn { position: fixed; bottom: 30px; right: 30px; background: var(--main-dark); color: white; width: 65px; height: 65px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; z-index: 1000; }
+        
+        .chat-window { position: fixed; bottom: 110px; right: 30px; width: 350px; max-width: 90vw; background: var(--bg-card); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); border: 1px solid var(--border-color); display: none; flex-direction: column; z-index: 1000; overflow: hidden; }
+        .chat-header { background: var(--main-dark); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .chat-body { padding: 15px; height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+        .chat-msg { padding: 10px; border-radius: 10px; max-width: 80%; }
+        .bot-msg { background: var(--bg-light); border: 1px solid var(--border-color); align-self: flex-start; }
+        .user-msg { background: var(--main-dark); color: white; align-self: flex-end; }
+        .chat-footer { padding: 10px; display: flex; border-top: 1px solid var(--border-color); background: var(--bg-card); }
+        .chat-footer input { flex: 1; padding: 8px; border: none; outline: none; background: transparent; color: var(--text-dark); }
+        .chat-footer button { background: none; border: none; color: var(--main-dark); font-size: 20px; cursor: pointer; }
+
+        /* تذييل الصفحة المحدث ببيانات الكرت */
+        footer { text-align: center; padding: 60px 5%; background: var(--main-dark); color: white; margin-top: 80px; position: relative; }
+        footer p { margin: 5px 0; opacity: 0.8; font-size: 14px; }
+        footer h4 { color: white; font-size: 18px; margin-bottom: 20px; }
+        .contact-info-block { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-bottom: 20px; }
+        .contact-info-block span { display: flex; align-items: center; gap: 8px; font-size: 14px; opacity: 0.9; }
+
+        .slogan-footer {
+            font-size: 16px; font-weight: 600; color: var(--accent-color); margin-top: 30px; display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <i class="fas fa-tooth" style="font-size: 24px; color: var(--main-dark);"></i>
+            <h1>عيادة الرحمن <span>لطب الأسنان</span></h1>
+        </div>
+        <nav>
+            <a href="#">الرئيسية</a>
+            <a href="#services">خدماتنا</a>
+            <a href="#booking">حجز موعد</a>
+        </nav>
+        <div class="header-controls">
+            <button class="theme-toggle" onclick="toggleTheme()" title="تغيير المظهر"><i class="fas fa-moon" id="theme-icon"></i></button>
+            <button class="btn-login">السجل الرقمي <i class="fas fa-user-shield"></i></button>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h2>دكتور: <span>مالك عبدالرحمن</span></h2>
+        <h3>أخصائي طب وجراحة الفم والأسنان</h3>
+        <p>عيادة الرحمن توفر حلولاً طبية وتجميلية متكاملة لابتسامة صحية تدوم. نستخدم أحدث الأجهزة والمواد الألمانية والتعقيم بأعلى المعايير.</p>
+        <a href="#booking" style="background: white; color: var(--main-dark); padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">احجز استشارتك الآن</a>
+    </section>
+
+    <div class="container">
+        <div class="section-title" id="services">
+            <h2>خدماتنا التخصصية</h2>
+        </div>
+        <div class="services-grid">
+            <div class="card">
+                <i class="fas fa-magic"></i>
+                <h3>تبييض وتجميل</h3>
+                <p>ابتسامة هوليود، عدسات لاصقة، وتبييض ناصع بأحدث الأجهزة.</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-implants"></i>
+                <h3>زراعة الأسنان</h3>
+                <p>استعادة أسنانك المفقودة بأفضل الزراعات الألمانية المضمونة.</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-teeth-open"></i>
+                <h3>تقويم الأسنان</h3>
+                <p>تقويم شفاف وغير مرئي (Invisalign) وتقويم معدني حديث.</p>
+            </div>
+        </div>
+
+        <div class="section-title" style="margin-top: 80px;">
+            <h2>نتائج نفخر بها</h2>
+            <p>اسحب المؤشر لمقارنة النتائج</p>
+        </div>
+        <div class="ba-slider-container">
+            <img src="https://via.placeholder.com/800x450/121626/00e5ff?text=After+Treamtent+(Smile)" alt="بعد">
+            <div class="img-before" id="img-before">
+                <img src="https://via.placeholder.com/800x450/cccccc/222222?text=Before+Treatment+(Radiograph)" style="width: 800px; max-width: none;" alt="قبل">
+            </div>
+            <input type="range" min="0" max="100" value="50" class="slider-range" oninput="moveSlider(this.value)">
+        </div>
+
+        <div class="section-title" id="booking" style="margin-top: 80px;">
+            <h2>احجز موعدك الإلكتروني</h2>
+        </div>
+        <div class="booking-wrapper">
+            <div class="booking-info">
+                <h4>لماذا نحن؟</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 15px;"><i class="fas fa-check-circle" style="color: var(--accent-neon);"></i> كادر طبي متخصص (خبرة +15 عاماً)</li>
+                    <li style="margin-bottom: 15px;"><i class="fas fa-check-circle" style="color: var(--accent-neon);"></i> تعقيم بأحدث الأجهزة الدولية</li>
+                    <li style="margin-bottom: 15px;"><i class="fas fa-check-circle" style="color: var(--accent-neon);"></i> مواعيد دقيقة (بدون انتظار طويل)</li>
+                </ul>
+            </div>
+            <div class="booking-form-area">
+                <form id="bookingForm">
+                    <input type="text" id="name" placeholder="الاسم الكامل للمريض" required>
+                    <input type="tel" id="phone" placeholder="رقم الهاتف للتواصل" required>
+                    <input type="date" id="date" required>
+                    <select id="service" required>
+                        <option value="" disabled selected>نوع الخدمة المطلوبة</option>
+                        <option value="زراعة">زراعة أسنان</option>
+                        <option value="تجميل">تجميل وتبييض</option>
+                        <option value="تقويم">تقويم الأسنان</option>
+                        <option value="عام">عام / ألم</option>
+                    </select>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="whatsapp-notify" checked>
+                        <label for="whatsapp-notify">تفعيل التذكير الذكي بالمعد (Smart Notification)</label>
+                    </div>
+                    <button type="submit" class="btn-submit">تأكيد الحجز المبدئي</button>
+                </form>
+                <div id="response-msg" style="margin-top: 15px; text-align: center; color: green; font-weight: 600;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chatbot-btn" onclick="toggleChat()">
+        <i class="fas fa-robot"></i>
+    </div>
+    <div class="chat-window" id="chat-window">
+        <div class="chat-header">
+            <span>المساعد الآلي للعيادة</span>
+            <i class="fas fa-times" style="cursor:pointer;" onclick="toggleChat()"></i>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <div class="chat-msg bot-msg">أهلاً بك! أنا المساعد الذكي لدكتور مالك، كيف يمكنني مساعدتك؟ (مثال: أين مكان العيادة؟)</div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chat-input" placeholder="اكتب سؤالك هنا..." onkeypress="handleChatEnter(event)">
+            <button onclick="sendMsg()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <footer>
+        <h4>دكتور: مالك عبدالرحمن</h4>
+        <div class="contact-info-block">
+            <span><i class="fas fa-phone-alt"></i> 771134103</span>
+            <span><i class="fas fa-map-marker-alt"></i> حدنان - جوار مجمع السعيد التربوي</span>
+        </div>
+        <p>خصائي طب وجراحة الفم والأسنان - تقويم - زراعة - تركيب</p>
+        
+        <div class="slogan-footer">
+            <i class="fas fa-heart" style="color: #ff3333;"></i> #سلامتك_هي_مهمتنا
+        </div>
+        
+        <p style="margin-top: 40px;">© 2026 عيادة الرحمن - تم التصميم بكل حب ❤️ بواسطة د محمد فهد الرميمة-جميع الحقوق محفوظة</p>
+    </footer>
+
+    <script>
+        // 1. نظام الوضع الليلي (Dark Mode)
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.getElementById('theme-icon');
+            if(document.body.classList.contains('dark-mode')) {
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+        }
+
+        // 2. مؤشر قبل وبعد (Before & After Slider)
+        function moveSlider(value) {
+            document.getElementById('img-before').style.width = value + "%";
+        }
+
+        // 3. الدردشة الواجهة (Chatbot UI)
+        function toggleChat() {
+            const chat = document.getElementById('chat-window');
+            chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function handleChatEnter(e) {
+            if(e.key === 'Enter') sendMsg();
+        }
+
+        async function sendMsg() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if(!msg) return;
+
+            const chatBody = document.getElementById('chat-body');
+            
+            // 1. عرض رسالة المستخدم
+            chatBody.innerHTML += `<div class="chat-msg user-msg">${msg}</div>`;
+            input.value = '';
+            input.disabled = true; // تعطيل الإدخال أثناء الانتظار
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            // 2. إضافة مؤشر "جاري التفكير..."
+            const typingId = "typing-" + Date.now();
+            chatBody.innerHTML += `<div class="chat-msg bot-msg" id="${typingId}">جاري التفكير...</div>`;
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            try {
+                // يفترض وجود سيرفر شغال على المسار /api/chat
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+
+                const data = await response.json();
+                
+                // 3. استبدال نص الانتظار برد الذكاء الاصطناعي
+                document.getElementById(typingId).innerText = data.reply;
+            } catch (error) {
+                document.getElementById(typingId).innerText = "عذراً، فشل الاتصال بالسيرفر. تأكد من تشغيل Node.js.";
+            } finally {
+                input.disabled = false; // إعادة تفعيل الإدخال
+                input.focus();
+            }
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        // 4. إدارة نموذج الحجز (القديم، مع تعديل بسيط للنجاح للتجربة)
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date').setAttribute('min', today);
+
+        document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.innerText = "جاري المعالجة...";
+            btn.disabled = true;
+
+            const data = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                date: document.getElementById('date').value,
+                service: document.getElementById('service').value,
+                wantsNotify: document.getElementById('whatsapp-notify').checked
+            };
+
+            try {
+                const response = await fetch('/api/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                const msgDiv = document.getElementById('response-msg');
+                msgDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${result.message}`;
+                this.reset();
+            } catch (error) {
+                const msgDiv = document.getElementById('response-msg');
+                msgDiv.innerHTML = `<i class="fas fa-check-circle"></i> تم إرسال طلب الحجز لمراجعة دكتور مالك (وضع التجربة - تأكد من تشغيل Node.js)`;
+            } finally {
+                btn.innerText = "تأكيد الحجز المبدئي";
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
