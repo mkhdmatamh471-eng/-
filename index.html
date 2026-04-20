@@ -303,41 +303,52 @@
     function toggleTheme() {
         document.body.classList.toggle('dark-mode');
         const icon = document.getElementById('theme-icon');
-        if(document.body.classList.contains('dark-mode')) {
-            icon.classList.replace('fa-moon', 'fa-sun');
-        } else {
-            icon.classList.replace('fa-sun', 'fa-moon');
+        if (icon) {
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
         }
     }
 
     // 2. مؤشر قبل وبعد (Before & After Slider)
     function moveSlider(value) {
-        document.getElementById('img-before').style.width = value + "%";
+        const beforeImg = document.getElementById('img-before');
+        if (beforeImg) {
+            beforeImg.style.width = value + "%";
+        }
     }
 
-    // 3. الدردشة الواجهة (Chatbot UI)
+    // 3. نظام الدردشة الذكي (Chatbot UI)
     function toggleChat() {
         const chat = document.getElementById('chat-window');
-        chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+        if (chat) {
+            chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+        }
     }
 
     function handleChatEnter(e) {
-        if(e.key === 'Enter') sendMsg();
+        if (e.key === 'Enter') sendMsg();
     }
 
     async function sendMsg() {
         const input = document.getElementById('chat-input');
-        const msg = input.value.trim();
-        if(!msg) return;
-
         const chatBody = document.getElementById('chat-body');
+        if (!input || !chatBody) return;
+
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        // إضافة رسالة المستخدم
         chatBody.innerHTML += `<div class="chat-msg user-msg">${msg}</div>`;
         input.value = '';
         input.disabled = true;
         chatBody.scrollTop = chatBody.scrollHeight;
 
+        // حالة جاري التفكير
         const typingId = "typing-" + Date.now();
-        chatBody.innerHTML += `<div class="chat-msg bot-msg" id="${typingId}">جاري التفكير...</div>`;
+        chatBody.innerHTML += `<div class="chat-msg bot-msg" id="${typingId}"><i class="fas fa-spinner fa-spin"></i> جاري التفكير...</div>`;
         chatBody.scrollTop = chatBody.scrollHeight;
 
         try {
@@ -349,63 +360,77 @@
             const data = await response.json();
             document.getElementById(typingId).innerText = data.reply;
         } catch (error) {
-            document.getElementById(typingId).innerText = "عذراً، فشل الاتصال بالسيرفر. تأكد من تشغيل Node.js.";
+            document.getElementById(typingId).innerText = "عذراً، فشل الاتصال بالسيرفر. يرجى المحاولة لاحقاً.";
         } finally {
             input.disabled = false;
             input.focus();
+            chatBody.scrollTop = chatBody.scrollHeight;
         }
-        chatBody.scrollTop = chatBody.scrollHeight;
     }
 
-    // 4. نظام الحجز المطور: إرسال مباشر إلى واتساب الدكتور مالك
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('date').setAttribute('min', today);
+    // 4. نظام الحجز المطور: التكامل مع واتساب
+    const dateInput = document.getElementById('date');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+    }
 
-    document.getElementById('bookingForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const name = document.getElementById('name').value;
-    const phone = document.getElementById('phone').value;
-    const date = document.getElementById('date').value;
-    const time = document.getElementById('time').value; // جلب الوقت
-    const period = document.getElementById('period').value; // جلب الفترة
-    const service = document.getElementById('service').value;
-
-    const message = 
-        `*طلب حجز جديد عبر الموقع*%0A` +
-        `--------------------------%0A` +
-        `*الاسم:* ${name}%0A` +
-        `*الجوال:* ${phone}%0A` +
-        `*الموعد:* ${date}%0A` +
-        `*الوقت:* ${time} (${period})%0A` + // إضافة الوقت للرسالة
-        `*المعالجة:* ${service}%0A` +
-        `--------------------------`;
-
-    
-
-        // رقم الواتساب بالصيغة الدولية بدون (+) أو (00)
-        const whatsappNumber = "967771134103";
-        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-
-        btn.innerText = "جاري التحويل...";
-        btn.disabled = true;
-
-        // إظهار تنبيه للمستخدم قبل التحويل
-        msgDiv.style.color = "blue";
-        msgDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري فتح واتساب للتأكيد...`;
-
-        setTimeout(() => {
-            // فتح الرابط في نافذة جديدة
-            window.open(whatsappUrl, '_blank');
+    const bookingForm = document.getElementById('bookingForm');
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            // إعادة ضبط النموذج
-            this.reset();
-            btn.innerText = "تأكيد الحجز المبدئي";
-            btn.disabled = false;
-            msgDiv.style.color = "green";
-            msgDiv.innerHTML = `<i class="fas fa-check-circle"></i> تم التحويل بنجاح! شكراً لك.`;
-        }, 1200);
-    });
+            const btn = this.querySelector('button');
+            const msgDiv = document.getElementById('response-msg');
+            
+            // جمع البيانات
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+            const period = document.getElementById('period').value;
+            const service = document.getElementById('service').value;
+
+            // تنسيق الرسالة
+            const message = 
+                `*طلب حجز موعد جديد (عيادة الرحمن)*%0A` +
+                `--------------------------%0A` +
+                `*الاسم:* ${name}%0A` +
+                `*الجوال:* ${phone}%0A` +
+                `*الموعد:* ${date}%0A` +
+                `*الوقت:* ${time} (${period})%0A` +
+                `*المعالجة المطلوبة:* ${service}%0A` +
+                `--------------------------`;
+
+            const whatsappNumber = "967771134103";
+            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+
+            // تحسين تفاعل المستخدم
+            if (btn) {
+                btn.innerText = "جاري التحويل...";
+                btn.disabled = true;
+            }
+            if (msgDiv) {
+                msgDiv.style.color = "blue";
+                msgDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري فتح واتساب للتأكيد...`;
+            }
+
+            setTimeout(() => {
+                window.open(whatsappUrl, '_blank');
+                
+                // إعادة تعيين النموذج
+                this.reset();
+                if (btn) {
+                    btn.innerText = "تأكيد الحجز المبدئي";
+                    btn.disabled = false;
+                }
+                if (msgDiv) {
+                    msgDiv.style.color = "green";
+                    msgDiv.innerHTML = `<i class="fas fa-check-circle"></i> تم التحويل بنجاح! شكراً لك.`;
+                }
+            }, 1200);
+        });
+    }
 </script>
 
 </body>
