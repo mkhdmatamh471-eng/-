@@ -1033,6 +1033,21 @@ body.dark-mode .acc-number {
     </div>
     
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+    
+            <div class="payment-card">
+            <div class="currency-tag" style="background: #95a5a6;">YER</div>
+            <h4>يمني (جديد)</h4>
+            <div class="acc-number" onclick="copyAcc('3012144384')">3012144384 <i class="far fa-copy"></i></div>
+            <p>باسم: مالك عبدالرحمن</p>
+        </div>
+        
+        <div class="payment-card">
+            <div class="currency-tag" style="background: #e67e22;">YER</div>
+            <h4>يمني (قديم)</h4>
+            <div class="acc-number" onclick="copyAcc('3181811438')">3181811438 <i class="far fa-copy"></i></div>
+            <p>باسم: مالك عبدالرحمن</p>
+        </div>
+
         <div class="payment-card">
             <div class="currency-tag">SAR</div>
             <h4>ريال سعودي</h4>
@@ -1047,19 +1062,8 @@ body.dark-mode .acc-number {
             <p>باسم: مالك عبدالرحمن</p>
         </div>
 
-        <div class="payment-card">
-            <div class="currency-tag" style="background: #e67e22;">YER</div>
-            <h4>يمني (قديم)</h4>
-            <div class="acc-number" onclick="copyAcc('3181811438')">3181811438 <i class="far fa-copy"></i></div>
-            <p>باسم: مالك عبدالرحمن</p>
-        </div>
+        
 
-        <div class="payment-card">
-            <div class="currency-tag" style="background: #95a5a6;">YER</div>
-            <h4>يمني (جديد)</h4>
-            <div class="acc-number" onclick="copyAcc('3012144384')">3012144384 <i class="far fa-copy"></i></div>
-            <p>باسم: مالك عبدالرحمن</p>
-        </div>
     </div>
 </section>
 
@@ -1356,74 +1360,103 @@ function sendEmergencySOS() {
     // 4. نظام الحجز المطور: التكامل مع واتساب
 const bookingForm = document.getElementById('bookingForm');
 if (bookingForm) {
-    bookingForm.addEventListener('submit', function(e) {
+    bookingForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const btn = this.querySelector('button');
         const msgDiv = document.getElementById('response-msg');
-        const imageInput = document.getElementById('patient-image');
         
-        // استخراج البيانات
+        // 1. استخراج البيانات
         const name = document.getElementById('name').value;
         const phone = document.getElementById('phone').value;
         const date = document.getElementById('date').value;
         const time = document.getElementById('time').value;
         const service = document.getElementById('service').value;
 
-        // التحقق مما إذا كان المريض أرفق صورة
-        let imageNotice = "";
-        if (imageInput && imageInput.files.length > 0) {
-            // تنبيه للمريض في صفحة العيادة قبل التحويل
-            imageNotice = "%0A%0A⚠️ *ملاحظة:* يرجى إرفاق الصورة من الاستوديو بعد فتح المحادثة مباشرة.";
-        }
+        // 2. حفظ البيانات في المتصفح (لوحة التحكم)
+        const bookingData = {
+            name: name,
+            phone: phone,
+            date: date,
+            time: time,
+            service: service,
+            symptoms: selectedSymptoms.join(' + ') || 'فحص عام',
+            teeth: selectedTeeth.join('، ') || 'غير محدد',
+            timestamp: new Date().toLocaleString()
+        };
+        saveBookingLocal(bookingData);
 
-        const message = 
-            `*طلب حجز ذكي - عيادة الرَّحْمَٰن* %0A` +
-            `--------------------------%0A` +
-            `*المريض:* ${name}%0A` +
-            `*الهاتف:* ${phone}%0A` +
-            `*الخدمة:* ${service}%0A` +
-            `*الموعد:* ${date} - ${time}%0A` +
-            `--------------------------%0A` +
-            `*الأعراض:* ${selectedSymptoms.join(' + ') || 'فحص عام'}%0A` +
-            `*الأسنان:* ${selectedTeeth.join('، ') || 'غير محدد'}%0A` +
-            imageNotice;
-
-const bookingData = {
-    name: name,
-    phone: phone,
-    date: date,
-    time: time,
-    service: service,
-    timestamp: new Date().toLocaleString()
-};
-saveBookingLocal(bookingData); // هذا السطر يرسل الحجز للنافذة الخاصة
-
-        const whatsappNumber = "967771134103";
-        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-
+        // 3. تحديث واجهة المستخدم فوراً (بدون تحويل)
         if (btn) {
-            btn.innerText = "جاري التحويل...";
+            btn.innerHTML = `<i class="fas fa-check-circle"></i> تم تسجيل حجزك بنجاح`;
+            btn.style.background = "#2ecc71";
             btn.disabled = true;
         }
 
-        // إظهار رسالة إرشادية للمريض
         if (msgDiv) {
-            msgDiv.style.color = "#d4a017"; // لون تنبيهي
-            msgDiv.innerHTML = imageInput.files.length > 0 
-                ? `<i class="fas fa-info-circle"></i> سيفتح واتساب الآن.. <b>تذكر إرفاق الصورة</b> من مشبك الورق 📎`
-                : `<i class="fas fa-spinner fa-spin"></i> جاري فتح واتساب...`;
+            msgDiv.style.color = "#2ecc71";
+            msgDiv.innerHTML = "شكراً لك دكتور/ة " + name + ". تم تأكيد موعدك، وستصلك رسالة تذكير آلياً.";
         }
 
+        // 4. إرسال التذكير الآلي عبر البوت في الخلفية
+        sendAutoReminder(bookingData);
+
+        // إعادة تعيين النموذج بعد 5 ثوانٍ
         setTimeout(() => {
-            window.open(whatsappUrl, '_blank');
-            if (btn) {
-                btn.innerText = "تأكيد الحجز المبدئي";
-                btn.disabled = false;
-            }
-        }, 2000); // زيادة الوقت قليلاً ليقرأ المريض التنبيه
+            bookingForm.reset();
+            btn.innerHTML = "تأكيد الحجز المبدئي";
+            btn.style.background = "";
+            btn.disabled = false;
+            msgDiv.innerHTML = "";
+            // مسح بيانات الأسنان المختارة بصرياً
+            document.querySelectorAll('.tooth-unit').forEach(t => t.classList.remove('active'));
+            selectedTeeth = [];
+            selectedSymptoms = [];
+        }, 5000);
     });
 }
+
+// دالة إرسال التذكير الآلي عبر API وسيط
+// دالة إرسال التذكير الآلي باستخدام مفتاح الـ API الخاص بك
+async function sendAutoReminder(data) {
+    // 1. تنظيف وتنسيق رقم الهاتف
+    let formattedPhone = data.phone.trim();
+    // إزالة الصفر الأول إذا وجد وإضافة مفتاح اليمن
+    formattedPhone = formattedPhone.replace(/^0+/, ''); 
+    if (!formattedPhone.startsWith('967')) {
+        formattedPhone = '967' + formattedPhone;
+    }
+
+    // 2. إعداد مفتاح الـ API الخاص بك (الذي حصلت عليه)
+    const apiKey = "7885457"; 
+
+    // 3. صياغة الرسالة بشكل احترافي
+    const message = `*تأكيد حجز ذكي - عيادة الرَّحْمَٰن*%0A` +
+                    `--------------------------%0A` +
+                    `مرحباً بك د/ ${data.name}%0A` +
+                    `تم تسجيل موعدك بنجاح:%0A` +
+                    `🗓️ التاريخ: ${data.date}%0A` +
+                    `⏰ الوقت: ${data.time}%0A` +
+                    `🦷 الخدمة: ${data.service}%0A` +
+                    `--------------------------%0A` +
+                    `📍 الموقع: تعز - صبر - حدنان%0A` +
+                    `نتمنى لك وافر الصحة والعافية.`;
+
+    // 4. بناء الرابط النهائي للـ API
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${formattedPhone}&text=${message}&apikey=${apiKey}`;
+
+    try {
+        // الإرسال في الخلفية باستخدام fetch مع وضع no-cors لتجنب مشاكل المتصفح
+        await fetch(url, { 
+            mode: 'no-cors',
+            method: 'GET'
+        });
+        console.log("✅ تم إرسال رسالة التذكير بنجاح إلى الرقم: " + formattedPhone);
+    } catch (err) {
+        console.error("❌ فشل إرسال التذكير:", err);
+    }
+}
+
 
 // تعديل بسيط على كود الحجز السابق لإضافة ميزة الحفظ
 function saveBookingLocal(bookingData) {
@@ -1528,6 +1561,35 @@ function printTicket(index) {
         </html>
     `);
     printWindow.document.close();
+}
+
+function printDailyReport() {
+    const bookings = JSON.parse(localStorage.getItem('clinic_bookings') || '[]');
+    const today = new Date().toLocaleDateString('en-CA'); // صيغة YYYY-MM-DD
+    const todayBookings = bookings.filter(b => b.date === today);
+
+    if(todayBookings.length === 0) {
+        alert("لا توجد حجوزات لهذا اليوم");
+        return;
+    }
+
+    let reportWindow = window.open('', '_blank');
+    reportWindow.document.write(`
+        <div dir="rtl" style="font-family: Cairo; padding: 20px;">
+            <h2 style="text-align: center;">جدول حجوزات عيادة الرحمن - يوم ${today}</h2>
+            <table border="1" style="width: 100%; border-collapse: collapse; text-align: center;">
+                <tr style="background: #f0f0f0;">
+                    <th>الوقت</th><th>المريض</th><th>الخدمة</th><th>رقم الهاتف</th>
+                </tr>
+                ${todayBookings.map(b => `
+                    <tr>
+                        <td>${b.time}</td><td>${b.name}</td><td>${b.service}</td><td>${b.phone}</td>
+                    </tr>
+                `).join('')}
+            </table>
+        </div>
+    `);
+    reportWindow.print();
 }
 
 
