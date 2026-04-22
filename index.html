@@ -1457,17 +1457,79 @@ function displayBookings() {
     const tableBody = document.getElementById('bookings-table-body');
     tableBody.innerHTML = '';
 
-    bookings.reverse().forEach(b => {
+    bookings.reverse().forEach((b, index) => {
+        // نستخدم index لتحديد العنصر عند الحذف أو الطباعة
         tableBody.innerHTML += `
             <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 10px;">${b.name}<br><small>${b.phone}</small></td>
+                <td style="padding: 10px;"><b>${b.name}</b><br><small>${b.phone}</small></td>
                 <td style="padding: 10px;">${b.date}<br>${b.time}</td>
                 <td style="padding: 10px;">${b.service}</td>
-                <td style="padding: 10px;"><span style="color: green;">جديد</span></td>
+                <td style="padding: 10px;">
+                    <button onclick="printTicket(${bookings.length - 1 - index})" style="background: #00e5ff; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; color: #121626;"><i class="fas fa-print"></i></button>
+                    <button onclick="deleteBooking(${bookings.length - 1 - index})" style="background: #ff3333; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; color: white;"><i class="fas fa-trash"></i></button>
+                </td>
             </tr>
         `;
     });
 }
+
+
+// دالة حذف حجز معين
+function deleteBooking(index) {
+    if(confirm("هل أنت متأكد من حذف هذا الحجز نهائياً؟")) {
+        let bookings = JSON.parse(localStorage.getItem('clinic_bookings') || '[]');
+        bookings.splice(index, 1);
+        localStorage.setItem('clinic_bookings', JSON.stringify(bookings));
+        displayBookings();
+    }
+}
+
+// دالة الطباعة الاحترافية
+function printTicket(index) {
+    const bookings = JSON.parse(localStorage.getItem('clinic_bookings') || '[]');
+    const b = bookings[index];
+    
+    // إنشاء نافذة طباعة جديدة
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>تذكرة موعد - عيادة الرحمن</title>
+            <style>
+                body { font-family: 'Cairo', sans-serif; direction: rtl; text-align: center; padding: 20px; }
+                .ticket { border: 2px solid #333; padding: 20px; border-radius: 15px; width: 300px; margin: 0 auto; }
+                .header { border-bottom: 1px solid #ddd; margin-bottom: 15px; padding-bottom: 10px; }
+                .details { text-align: right; line-height: 2; }
+                .footer { margin-top: 20px; font-size: 12px; border-top: 1px solid #ddd; padding-top: 10px; }
+                @media print { .no-print { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div class="ticket">
+                <div class="header">
+                    <h3>عيادة الرَّحْمَٰن</h3>
+                    <p>د. مالك عبد الرَّحْمَٰن</p>
+                </div>
+                <div class="details">
+                    <b>اسم المريض:</b> ${b.name}<br>
+                    <b>الموعد:</b> ${b.date}<br>
+                    <b>الوقت:</b> ${b.time}<br>
+                    <b>نوع المعالجة:</b> ${b.service}<br>
+                    <b>رقم التواصل:</b> ${b.phone}
+                </div>
+                <div class="footer">
+                    نتمنى لكم الشفاء العاجل<br>
+                    تعز - صبر - مشرعة وحدنان
+                </div>
+            </div>
+            <br>
+            <button class="no-print" onclick="window.print()">اضغط هنا للطباعة</button>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
 
 function copyAcc(num) {
     navigator.clipboard.writeText(num);
@@ -1541,20 +1603,23 @@ function copyAcc(num) {
             <button onclick="checkAdminPass()" class="btn-submit" style="padding: 10px 20px; margin-top: 10px;">دخول</button>
         </div>
 
-        <div id="bookings-list" style="display: none; margin-top: 20px;">
-            <table style="width: 100%; border-collapse: collapse; text-align: right;">
-                <thead>
-                    <tr style="background: #f4f4f4;">
-                        <th style="padding: 12px; border: 1px solid #ddd;">المريض</th>
-                        <th style="padding: 12px; border: 1px solid #ddd;">الموعد</th>
-                        <th style="padding: 12px; border: 1px solid #ddd;">الخدمة</th>
-                        <th style="padding: 12px; border: 1px solid #ddd;">الحالة</th>
-                    </tr>
-                </thead>
-                <tbody id="bookings-table-body">
-                    </tbody>
-            </table>
-        </div>
+ <div id="bookings-list" style="display: none; margin-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3>قائمة الحجوزات الحالية</h3>
+        <button onclick="window.print()" class="btn-submit" style="padding: 5px 15px; background: #333;">طباعة الكشف كامل</button>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; text-align: right;">
+        <thead>
+            <tr style="background: #f4f4f4;">
+                <th style="padding: 12px; border: 1px solid #ddd;">المريض</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">الموعد</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">الخدمة</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">الإجراءات</th> </tr>
+        </thead>
+        <tbody id="bookings-table-body"></tbody>
+    </table>
+</div>
+
     </div>
 </div>
 
