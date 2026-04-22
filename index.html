@@ -700,6 +700,58 @@ body.dark-mode .sos-content { background: #1a1a1a; color: #fff; }
             font-size: 10px;
         }
     }
+    
+    .payment-card {
+    background: var(--bg-card);
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    position: relative;
+    transition: 0.3s;
+}
+
+.payment-card:hover {
+    border-color: var(--accent-neon);
+    transform: translateY(-5px);
+}
+
+.currency-tag {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: var(--main-dark);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.acc-number {
+    background: var(--bg-light);
+    padding: 10px;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 1.2rem;
+    color: var(--main-dark);
+    margin: 15px 0;
+    cursor: pointer;
+    border: 1px dashed var(--accent-neon);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+body.dark-mode .acc-number {
+    color: var(--accent-neon);
+    background: rgba(0, 229, 255, 0.05);
+}
+
+.payment-card h4 { margin: 0; opacity: 0.8; }
+.payment-card p { font-size: 13px; margin: 0; opacity: 0.6; }
+
 </style>
 
     <section class="hero">
@@ -973,6 +1025,43 @@ body.dark-mode .sos-content { background: #1a1a1a; color: #fff; }
             <button onclick="sendMsg()" aria-label="إرسال الرسالة"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
+
+<section class="container" id="payments-section">
+    <div class="section-title">
+        <h2>بيانات السداد والدفع</h2>
+        <p>يمكنكم التحويل المباشر لحسابات العيادة في بنك الكريمي</p>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div class="payment-card">
+            <div class="currency-tag">SAR</div>
+            <h4>ريال سعودي</h4>
+            <div class="acc-number" onclick="copyAcc('3110578497')">3110578497 <i class="far fa-copy"></i></div>
+            <p>باسم: مالك عبدالرحمن</p>
+        </div>
+
+        <div class="payment-card">
+            <div class="currency-tag" style="background: #2ecc71;">USD</div>
+            <h4>دولار أمريكي</h4>
+            <div class="acc-number" onclick="copyAcc('3181903553')">3181903553 <i class="far fa-copy"></i></div>
+            <p>باسم: مالك عبدالرحمن</p>
+        </div>
+
+        <div class="payment-card">
+            <div class="currency-tag" style="background: #e67e22;">YER</div>
+            <h4>يمني (قديم)</h4>
+            <div class="acc-number" onclick="copyAcc('3181811438')">3181811438 <i class="far fa-copy"></i></div>
+            <p>باسم: مالك عبدالرحمن</p>
+        </div>
+
+        <div class="payment-card">
+            <div class="currency-tag" style="background: #95a5a6;">YER</div>
+            <h4>يمني (جديد)</h4>
+            <div class="acc-number" onclick="copyAcc('3012144384')">3012144384 <i class="far fa-copy"></i></div>
+            <p>باسم: مالك عبدالرحمن</p>
+        </div>
+    </div>
+</section>
 
 
     <footer>
@@ -1380,6 +1469,10 @@ function displayBookings() {
     });
 }
 
+function copyAcc(num) {
+    navigator.clipboard.writeText(num);
+    alert("تم نسخ رقم الحساب: " + num);
+}
 
             
 </script>
@@ -1400,14 +1493,20 @@ function displayBookings() {
         </div>
 
         <div class="sos-form">
-            <label>أين تشعر بالألم؟</label>
-            <select id="emergency-location">
-                <option value="غير محدد">اختر المنطقة...</option>
-                <option value="الفك العلوي">الفك العلوي</option>
-                <option value="الفك السفلي">الفك السفلي</option>
-                <option value="الجهة اليمنى">جهة اليمين</option>
-                <option value="الجهة اليسرى">جهة اليسار</option>
-            </select>
+            <label>أين تشعر بالألم بدقة؟</label>
+<select id="emergency-location">
+    <option value="غير محدد">اختر المنطقة...</option>
+    <optgroup label="الفك العلوي">
+        <option value="الفك العلوي - جهة اليمين">الفك العلوي (جهة اليمين)</option>
+        <option value="الفك العلوي - جهة اليسار">الفك العلوي (جهة اليسار)</option>
+    </optgroup>
+    <optgroup label="الفك السفلي">
+        <option value="الفك السفلي - جهة اليمين">الفك السفلي (جهة اليمين)</option>
+        <option value="الفك السفلي - جهة اليسار">الفك السفلي (جهة اليسار)</option>
+    </optgroup>
+    <option value="ألم في كامل الفكين">ألم عام في كامل الفكين</option>
+</select>
+
 
             <label>رقم هاتفك للتواصل الفوري:</label>
             <input type="tel" id="emergency-phone" placeholder="7XXXXXXXX" required>
